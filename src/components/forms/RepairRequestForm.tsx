@@ -245,7 +245,7 @@ export function RepairRequestForm() {
       await registerUser(
         formData.phone,
         formData.password,
-        "client",
+        "customer",
         `${formData.firstName} ${formData.lastName}`
       );
     }

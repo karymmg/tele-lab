@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/services/supabase/client";
 
-export type UserRole = "admin" | "client" | "driver" | "technician";
+export type UserRole = "admin" | "customer" | "driver" | "technician";
 
 export interface AuthUser {
   username: string;
@@ -36,11 +36,17 @@ export async function registerUser(username: string, password: string, role: Use
   }
 
   // Insert profile
+  // Split displayName into first and last name (since schema requires first_name and last_name)
+  const nameParts = displayName.split(" ");
+  const firstName = nameParts[0] || "Unknown";
+  const lastName = nameParts.slice(1).join(" ") || "Unknown";
+
   const { error: profileError } = await supabase.from("profiles").upsert({
     id: authData.user.id,
     phone,
     role,
-    display_name: displayName,
+    first_name: firstName,
+    last_name: lastName,
   });
 
   if (profileError) {
@@ -76,7 +82,7 @@ export async function login(username: string, password: string): Promise<{ succe
   const user: AuthUser = {
     username: profile.phone,
     role: profile.role as UserRole,
-    displayName: profile.display_name,
+    displayName: `${profile.first_name} ${profile.last_name}`,
   };
 
   return { success: true, user };
@@ -114,7 +120,7 @@ export function useAuth() {
           setUser({
             username: profile.phone,
             role: profile.role as UserRole,
-            displayName: profile.display_name,
+            displayName: `${profile.first_name} ${profile.last_name}`,
           });
         } else {
           setUser(null);
@@ -140,7 +146,7 @@ export function useAuth() {
           setUser({
             username: profile.phone,
             role: profile.role as UserRole,
-            displayName: profile.display_name,
+            displayName: `${profile.first_name} ${profile.last_name}`,
           });
         }
       }
