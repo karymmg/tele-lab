@@ -1,0 +1,64 @@
+/* ==========================================================================
+   TELE LAB — Design Tokens (Premium Technical Laboratory)
+   ========================================================================== */
+
+:root {
+  /* Couleurs de base - Dark Mode Premium */
+  --color-primary: #008CFF;
+  --color-primary-dark: #00A3FF;
+  --color-text: #F5F7FA;
+  --color-text-secondary: #A7B0B8;
+  --color-bg: #03070A;
+  --color-bg-secondary: #071016;
+  --color-border: #123044;
+  --color-glass: rgba(7, 16, 22, 0.6);
+
+  /* Accent néon - Vibrants pour le look motion graphics */
+  --neon-gradient: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  --neon-glow: 0 0 24px rgba(0, 140, 255, 0.2);
+  --neon-glow-strong: 0 0 32px rgba(0, 163, 255, 0.4);
+  --neon-blob: radial-gradient(
+    circle,
+    rgba(0, 140, 255, 0.1) 0%,
+    rgba(0, 163, 255, 0.05) 50%,
+    transparent 70%
+  );
+
+  /* Couleurs sémantiques */
+  --color-success: #00e676;
+  --color-warning: #ffb300;
+  --color-progress: #00d2ff;
+  --color-error: #ff3d00;
+  --color-info: #00d2ff;
+
+  /* Animations Tokens */
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 400ms;
+  --duration-slow: 800ms;
+
+  /* Typographie */
+  --font-display: "Montserrat", "Tajawal", sans-serif;
+  --font-body: "Inter", "Tajawal", sans-serif;
+
+  /* Rayons */
+  --radius-card: 20px;
+  --radius-button: 12px;
+  --radius-input: 10px;
+  --radius-pill: 999px;
+
+  /* Ombres */
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-card-hover: 0 12px 48px rgba(0, 210, 255, 0.15);
+
+  /* Espacements de section */
+  --space-section-desktop: 120px;
+  --space-section-mobile: 64px;
+  --container-max: 1200px;
+}
+
+/* Inversion du dégradé néon en RTL pour garder le sens de lecture */
+[dir="rtl"] {
+  --neon-gradient: linear-gradient(225deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+}

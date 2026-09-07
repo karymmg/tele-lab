@@ -1,0 +1,32 @@
+.tl-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 28px;
+  border-radius: var(--radius-button);
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.tl-button--primary {
+  background: var(--neon-gradient);
+  color: #ffffff;
+}
+
+.tl-button--primary:hover {
+  box-shadow: var(--neon-glow);
+  transform: translateY(-2px);
+}
+
+.tl-button--secondary {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.tl-button--secondary:hover {
+  background: var(--color-bg-secondary);
+}

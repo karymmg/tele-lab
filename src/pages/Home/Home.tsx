@@ -1,0 +1,312 @@
+import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/Button";
+import {
+  Smartphone,
+  Battery,
+  Home as HomeIcon,
+  Headphones,
+  CheckCircle,
+  Search,
+  Wrench,
+  ArrowRight,
+  Clock,
+  PhoneCall,
+  Truck,
+  Star,
+} from "lucide-react";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { useParallax } from "@/hooks/useParallax";
+import { useScrollProgress } from "@/hooks/useScrollProgress";
+import "./Home.css";
+
+/* ── Static data ──────────────────────────────────────────────────────────── */
+
+const SERVICES = [
+  { icon: Smartphone, titleKey: "services.screen",    desc: "Remplacement LCD / OLED" },
+  { icon: Battery,    titleKey: "services.battery",   desc: "Remplacement batterie & connecteurs" },
+  { icon: HomeIcon,   titleKey: "services.homeVisit", desc: "Collecte et retour à domicile" },
+  { icon: Headphones, titleKey: "services.support",   desc: "Réponse en moins de 15 min", highlight: true },
+];
+
+const STEPS = [
+  { icon: Search,      key: 1, side: "left"  },
+  { icon: PhoneCall,   key: 2, side: "right" },
+  { icon: Truck,       key: 3, side: "left"  },
+  { icon: Wrench,      key: 4, side: "right" },
+  { icon: Truck,       key: 5, side: "left"  },
+  { icon: CheckCircle, key: 6, side: "right" },
+] as const;
+
+/* ── Component ───────────────────────────────────────────────────────────── */
+
+export function Home() {
+  const { t } = useTranslation();
+
+  // Scroll hooks
+  useScrollReveal();
+  useParallax(".tl-hero__img", 0.12);
+  useScrollProgress();
+
+  return (
+    <main className="tl-home">
+      {/* Scroll progress bar */}
+      <div className="tl-scroll-bar" aria-hidden="true" />
+
+      {/* ── HERO ──────────────────────────────────────────────────────── */}
+      <section className="tl-hero">
+        <div className="tl-hero__glow" aria-hidden="true" />
+        <div className="container tl-hero__inner">
+
+          {/* Copy */}
+          <div className="tl-hero__copy">
+            <div className="tl-eyebrow animate-in">
+              <span className="tl-eyebrow__line" />
+              <span>{t("hero.eyebrow")}</span>
+            </div>
+
+            <h1 className="tl-hero__title animate-in delay-1">
+              <span>{t("hero.titleLine2")}</span>
+              <span className="tl-hero__title-accent">
+                {t("hero.titleLine3")}
+                <HomeIcon className="tl-hero__title-icon" size={52} />
+              </span>
+            </h1>
+
+            <p className="tl-hero__subtitle animate-in delay-2">
+              {t("hero.subtitle")}
+            </p>
+
+            <div className="tl-hero__ctas animate-in delay-3">
+              <Link to="/demande">
+                <button className="tl-btn-primary">{t("hero.ctaPrimary")}</button>
+              </Link>
+              <Link to="/tracking">
+                <button className="tl-btn-ghost">{t("hero.ctaSecondary")}</button>
+              </Link>
+            </div>
+
+            <div className="tl-hero__badges animate-in delay-4">
+              <span className="tl-badge"><Star size={13} /> {t("hero.badge")}</span>
+              <span className="tl-badge"><CheckCircle size={13} /> {t("trustBar.warranty")}</span>
+              <span className="tl-badge"><CheckCircle size={13} /> {t("trustBar.diagnostic")}</span>
+              <span className="tl-badge"><Truck size={13} /> {t("trustBar.payment")}</span>
+            </div>
+          </div>
+
+          {/* Visual */}
+          <div className="tl-hero__visual animate-in delay-2">
+            <div className="tl-hero__img-frame">
+              <img
+                src="/hero_repair.jpg"
+                alt="Technicien réparant un téléphone en laboratoire"
+                className="tl-hero__img"
+              />
+              <div className="tl-hero__img-overlay" />
+              <div className="tl-hero__img-badge">
+                <Wrench size={18} />
+                <span>LABO TECHNIQUE</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── SERVICES ──────────────────────────────────────────────────── */}
+      <section id="services" className="tl-section container">
+        <div className="tl-section__header reveal">
+          <div className="tl-eyebrow">
+            <span className="tl-eyebrow__line" />
+            <span>NOS SERVICES</span>
+          </div>
+          <h2>TOUT CE DONT VOTRE TÉLÉPHONE A BESOIN</h2>
+        </div>
+
+        <div className="tl-services-grid stagger">
+          {SERVICES.map(({ icon: Icon, titleKey, desc, highlight }) => (
+            <article
+              key={titleKey}
+              className={`tl-service-card reveal${highlight ? " tl-service-card--highlight" : ""}`}
+            >
+              <div className="tl-service-card__top">
+                <Icon className="tl-service-card__icon" size={28} />
+                <ArrowRight className="tl-service-card__arrow" size={18} />
+              </div>
+              <h3>{t(titleKey)}</h3>
+              <p>{desc}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* ── COMMENT ÇA MARCHE — vertical alternating timeline ────────── */}
+      <section id="how-it-works" className="tl-section tl-how-bg">
+        <div className="container">
+          <div className="tl-section__header reveal" style={{ textAlign: "center", maxWidth: "none" }}>
+            <div className="tl-eyebrow" style={{ justifyContent: "center" }}>
+              <span className="tl-eyebrow__line" />
+              <span>PROCESSUS</span>
+              <span className="tl-eyebrow__line" />
+            </div>
+            <h2>{t("howItWorks.title")}</h2>
+            <p className="tl-section__subtitle">{t("howItWorks.subtitle")}</p>
+          </div>
+
+          {/* Vertical alternating timeline */}
+          <div className="tl-vtimeline">
+            {/* Center spine */}
+            <div className="tl-vtimeline__spine" aria-hidden="true" />
+
+            {STEPS.map(({ icon: Icon, key: step, side }) => (
+              <div
+                key={step}
+                className={`tl-vtimeline__row tl-vtimeline__row--${side}`}
+              >
+                {/* Card */}
+                <div className={`tl-vtimeline__card reveal-${side === "left" ? "left" : "right"}`}>
+                  <div className="tl-vtimeline__card-icon">
+                    <Icon size={22} />
+                  </div>
+                  <div className="tl-vtimeline__card-body">
+                    <h3>{t(`howItWorks.step${step}Title`)}</h3>
+                    <p>{t(`howItWorks.step${step}Text`)}</p>
+                  </div>
+                </div>
+
+                {/* Node on spine */}
+                <div className="tl-vtimeline__node reveal">
+                  <span className="tl-vtimeline__num">0{step}</span>
+                </div>
+
+                {/* Spacer (opposite side) */}
+                <div className="tl-vtimeline__spacer" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── LIVRAISON GRATUITE ────────────────────────────────────────── */}
+      <section className="tl-section container">
+        <div className="tl-delivery reveal-scale">
+          <div className="tl-delivery__img-col reveal-left">
+            <img
+              src="/delivery_van.jpg"
+              alt="Livraison Tele Lab à domicile"
+              className="tl-delivery__img"
+            />
+          </div>
+          <div className="tl-delivery__content reveal-right">
+            <div className="tl-eyebrow">
+              <span className="tl-eyebrow__line" />
+              <span>LIVRAISON</span>
+            </div>
+            <h2>{t("delivery.title")}</h2>
+            <p>{t("delivery.text")}</p>
+            <div className="tl-delivery__steps">
+              {["COLLECTE À DOMICILE", "RÉPARATION EN ATELIER", "RETOUR À DOMICILE"].map((s) => (
+                <span key={s} className="tl-pill"><CheckCircle size={13} /> {s}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── PAIEMENT 30 / 70 ──────────────────────────────────────────── */}
+      <section id="pricing" className="tl-section tl-how-bg">
+        <div className="container">
+          <div className="tl-section__header reveal">
+            <div className="tl-eyebrow">
+              <span className="tl-eyebrow__line" />
+              <span>TARIFICATION</span>
+            </div>
+            <h2>{t("payment.title")}</h2>
+          </div>
+
+          <div className="tl-payment">
+            <div className="tl-payment__cards">
+              <div className="tl-payment__card tl-payment__card--30 reveal-left">
+                <span className="tl-payment__pct">30%</span>
+                <div>
+                  <h3>{t("payment.depositTitle")}</h3>
+                  <p>{t("payment.depositText")}</p>
+                </div>
+              </div>
+
+              <div className="tl-payment__divider reveal">
+                <div className="tl-payment__bar">
+                  <div className="tl-payment__bar-fill" />
+                </div>
+                <div className="tl-payment__bar-labels">
+                  <span>À la collecte</span>
+                  <span>À la livraison</span>
+                </div>
+              </div>
+
+              <div className="tl-payment__card tl-payment__card--70 reveal-right">
+                <span className="tl-payment__pct">70%</span>
+                <div>
+                  <h3>{t("payment.remainingTitle")}</h3>
+                  <p>{t("payment.remainingText")}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="tl-payment__example reveal-scale">
+              <p className="tl-payment__example-label">{t("payment.example")} — 180 DT</p>
+              <div className="tl-payment__example-row">
+                <span>30%</span><span className="tl-payment__example-val">54 DT</span>
+              </div>
+              <div className="tl-payment__example-row">
+                <span>70%</span><span className="tl-payment__example-val">126 DT</span>
+              </div>
+              <div className="tl-payment__example-divider" />
+              <div className="tl-payment__example-row tl-payment__example-total">
+                <span>{t("payment.total")}</span><span>180 DT</span>
+              </div>
+              <p className="tl-payment__note">
+                <Search size={13} />
+                {t("payment.confirmNote")}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── STATS ─────────────────────────────────────────────────────── */}
+      <section className="tl-section container">
+        <div className="tl-stats stagger">
+          <div className="tl-stat reveal">
+            <Wrench className="tl-stat__icon" size={36} />
+            <span className="tl-stat__value">500+</span>
+            <span className="tl-stat__label">{t("stats.repairs")}</span>
+          </div>
+          <div className="tl-stat reveal">
+            <CheckCircle className="tl-stat__icon" size={36} />
+            <span className="tl-stat__value">98%</span>
+            <span className="tl-stat__label">{t("stats.satisfaction")}</span>
+          </div>
+          <div className="tl-stat reveal">
+            <Clock className="tl-stat__icon" size={36} />
+            <span className="tl-stat__value">30 min</span>
+            <span className="tl-stat__label">{t("stats.avgTime")}</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FINAL CTA ─────────────────────────────────────────────────── */}
+      <section id="contact" className="tl-section container">
+        <div className="tl-final-cta reveal-scale">
+          <div className="tl-final-cta__glow" aria-hidden="true" />
+          <h2>{t("finalCta.title")}</h2>
+          <p>{t("finalCta.subtitle")}</p>
+          <Link to="/demande">
+            <button className="tl-btn-primary">{t("finalCta.button")}</button>
+          </Link>
+        </div>
+      </section>
+
+    </main>
+  );
+}

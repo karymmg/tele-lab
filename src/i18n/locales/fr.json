@@ -1,0 +1,117 @@
+{
+  "nav": {
+    "home": "Accueil",
+    "services": "Services",
+    "howItWorks": "Comment ça marche ?",
+    "pricing": "Tarifs",
+    "track": "Suivre ma réparation",
+    "contact": "Contact"
+  },
+  "hero": {
+    "eyebrow": "SERVICE TECHNIQUE",
+    "titleLine2": "RÉPARATION TÉLÉPHONE",
+    "titleLine3": "À DOMICILE",
+    "subtitle": "Votre téléphone est en panne ? Tele Lab vient le récupérer chez vous, le répare dans notre atelier et vous le ramène directement à domicile.",
+    "ctaPrimary": "Réparer mon téléphone →",
+    "ctaSecondary": "Suivre ma réparation",
+    "badge": "+500 réparations effectuées"
+  },
+  "trustBar": {
+    "warranty": "Pièces garanties",
+    "payment": "Paiement à la livraison",
+    "diagnostic": "Diagnostic gratuit"
+  },
+  "services": {
+    "screen": "RÉPARATION ÉCRAN",
+    "battery": "BATTERIE & CHARGE",
+    "homeVisit": "INTERVENTION À DOMICILE",
+    "support": "SUPPORT RAPIDE",
+    "supportDetail": "Réponse en -15 min"
+  },
+  "stats": {
+    "repairs": "Réparations effectuées",
+    "satisfaction": "Clients satisfaits",
+    "avgTime": "Délai moyen d'intervention"
+  },
+  "howItWorks": {
+    "title": "COMMENT ÇA MARCHE ?",
+    "subtitle": "Une réparation simple, sans vous déplacer.",
+    "step1Title": "DEMANDEZ UNE RÉPARATION",
+    "step1Text": "Le client remplit le formulaire en quelques étapes.",
+    "step2Title": "CONFIRMATION",
+    "step2Text": "L'équipe Tele Lab vous contacte par téléphone pour comprendre le problème et confirmer le prix.",
+    "step3Title": "COLLECTE À DOMICILE",
+    "step3Text": "Un livreur Tele Lab vient récupérer le téléphone chez vous.",
+    "step4Title": "RÉPARATION",
+    "step4Text": "Le téléphone arrive à la boutique Tele Lab pour diagnostic et réparation.",
+    "step5Title": "RETOUR",
+    "step5Text": "Une fois la réparation terminée, le téléphone vous est livré.",
+    "step6Title": "PAIEMENT FINAL",
+    "step6Text": "Vous réglez les 70 % restants à la livraison."
+  },
+  "delivery": {
+    "title": "LIVRAISON GRATUITE",
+    "text": "Pas de frais de livraison. Nous récupérons votre téléphone chez vous et nous vous le ramenons après réparation.",
+    "steps": "COLLECTE À DOMICILE + RÉPARATION EN ATELIER + RETOUR À DOMICILE"
+  },
+  "payment": {
+    "title": "PAIEMENT SIMPLE & TRANSPARENT",
+    "depositTitle": "30 % À LA RÉCUPÉRATION",
+    "depositText": "Vous payez 30 % du prix de la réparation lorsque le livreur récupère votre téléphone.",
+    "remainingTitle": "70 % À LA LIVRAISON",
+    "remainingText": "Vous payez les 70 % restants lorsque le téléphone réparé vous est livré.",
+    "example": "EXEMPLE",
+    "total": "TOTAL",
+    "confirmNote": "Le prix final est défini et confirmé avec vous avant la collecte."
+  },
+  "finalCta": {
+    "title": "VOTRE TÉLÉPHONE A BESOIN D'UNE RÉPARATION ?",
+    "subtitle": "Demandez votre devis gratuitement et laissez Tele Lab s'occuper du reste.",
+    "button": "Demander un devis gratuit →"
+  },
+  "status": {
+    "new": "Nouvelle demande",
+    "price_confirmed": "Prix confirmé",
+    "confirmed": "Confirmée",
+    "driver_assigned_pickup": "Livreur assigné (collecte)",
+    "pickup_in_delivery": "Collecte en cours",
+    "picked_up": "Téléphone récupéré",
+    "received_at_shop": "Reçu à la boutique",
+    "repair_in_progress": "Réparation en cours",
+    "repair_ready": "Réparation terminée",
+    "driver_assigned_return": "Livreur assigné (retour)",
+    "return_in_delivery": "Livraison en cours",
+    "delivered_to_customer": "Livré au client",
+    "cancelled": "Annulée"
+  },
+  "form": {
+    "typeTitle": "Type de réparation",
+    "hardware": "Hardware",
+    "hardwareDesc": "Problème matériel",
+    "software": "Software",
+    "softwareDesc": "Problème logiciel",
+    "brand": "Marque",
+    "model": "Modèle",
+    "problem": "Problème",
+    "problemDescribe": "Décrivez le problème",
+    "photos": "Photos",
+    "takePhoto": "Prendre une photo",
+    "chooseGallery": "Choisir depuis la galerie",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "phone": "Numéro de téléphone",
+    "createAccount": "Créer un compte",
+    "continueWithoutAccount": "Continuer sans compte",
+    "useLocation": "Utiliser ma position actuelle",
+    "governorate": "Gouvernorat",
+    "city": "Ville / Délégation",
+    "zone": "Localité / Zone",
+    "address": "Adresse",
+    "addressComplement": "Complément d'adresse",
+    "summaryTitle": "Récapitulatif",
+    "importantNote": "Le prix final est confirmé par Tele Lab après analyse de votre demande et échange téléphonique. Aucune réparation ne doit être considérée comme définitivement acceptée avant confirmation.",
+    "submit": "Envoyer ma demande",
+    "next": "Suivant",
+    "previous": "Précédent"
+  }
+}

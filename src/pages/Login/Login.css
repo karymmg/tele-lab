@@ -1,0 +1,227 @@
+/* ==========================================================================
+   TELE LAB — Premium Login Page
+   ========================================================================== */
+
+.tl-login-page {
+  background-color: var(--color-bg);
+  min-height: calc(100vh - 72px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ambient glow orb */
+.tl-login-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 800px;
+  height: 800px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 140, 255, 0.05) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.tl-login-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.tl-login-card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 48px 40px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+}
+
+.tl-login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.tl-login-header h1 {
+  font-size: 28px;
+  color: var(--color-text);
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.tl-login-header p {
+  color: var(--color-text-secondary);
+  font-size: 15px;
+}
+
+.tl-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tl-login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tl-login-field label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tl-login-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.tl-login-icon {
+  position: absolute;
+  left: 16px;
+  color: var(--color-text-secondary);
+  pointer-events: none;
+  transition: color 0.3s ease;
+}
+
+.tl-login-input {
+  width: 100%;
+  padding: 14px 16px 14px 44px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.tl-login-input::placeholder {
+  color: #4a5a6a;
+}
+
+.tl-login-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 16px rgba(0, 140, 255, 0.15);
+}
+
+.tl-login-input:focus + .tl-login-icon,
+.tl-login-input-wrap:focus-within .tl-login-icon {
+  color: var(--color-primary);
+}
+
+.tl-login-submit {
+  margin-top: 12px;
+  background: var(--neon-gradient);
+  color: #fff;
+  border: none;
+  padding: 16px;
+  border-radius: var(--radius-input);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--neon-glow);
+}
+
+.tl-login-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--neon-glow-strong);
+}
+
+/* ── Demo Area ───────────────────────────────────────────────────────────── */
+.tl-login-demo {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid var(--color-border);
+}
+
+.tl-demo-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 20px;
+}
+
+.tl-demo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.tl-demo-btn {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  padding: 12px;
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tl-demo-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: rgba(0, 140, 255, 0.05);
+}
+
+.tl-demo-btn--admin {
+  grid-column: span 2;
+  border-color: rgba(0, 140, 255, 0.3);
+  color: var(--color-primary);
+  background: rgba(0, 140, 255, 0.05);
+}
+.tl-demo-btn--admin:hover {
+  background: rgba(0, 140, 255, 0.1);
+}
+
+@media (max-width: 600px) {
+  .tl-login-card {
+    padding: 32px 24px;
+  }
+}
+
+.tl-login-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 60, 60, 0.08);
+  border: 1px solid rgba(255, 60, 60, 0.25);
+  color: #ff6b6b;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 8px;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.tl-login-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}

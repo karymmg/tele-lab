@@ -1,0 +1,315 @@
+/* ==========================================================================
+   TELE LAB — Header (Compact Premium Dark)
+   ========================================================================== */
+
+.tl-header {
+  background: rgba(3, 7, 10, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(18, 48, 68, 0.35);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: all 0.3s ease;
+}
+
+.tl-header.is-scrolled {
+  background: rgba(3, 7, 10, 0.92);
+  border-bottom-color: rgba(18, 48, 68, 0.6);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Inner ───────────────────────────────────────────────────────────────── */
+.tl-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 8px;
+  height: 48px;
+}
+
+/* ── Logo ────────────────────────────────────────────────────────────────── */
+.tl-header__logo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+
+.tl-header__logo-text {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.05em;
+  color: #F5F7FA;
+}
+
+.tl-header__logo-accent {
+  color: #00A3FF;
+}
+
+/* ── Nav ─────────────────────────────────────────────────────────────────── */
+.tl-header__nav {
+  display: flex;
+  gap: 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #8a95a0;
+}
+
+.tl-header__nav a {
+  position: relative;
+  transition: color 0.2s ease;
+  white-space: nowrap;
+}
+
+.tl-header__nav a::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 1.5px;
+  background: #00A3FF;
+  transition: width 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border-radius: 1px;
+}
+
+.tl-header__nav a:hover {
+  color: #F5F7FA;
+}
+
+.tl-header__nav a:hover::after {
+  width: 100%;
+}
+
+/* ── Actions ─────────────────────────────────────────────────────────────── */
+.tl-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Language ────────────────────────────────────────────────────────────── */
+.tl-header__lang {
+  display: flex;
+  align-items: center;
+  background: rgba(18, 48, 68, 0.25);
+  border: 1px solid rgba(18, 48, 68, 0.4);
+  border-radius: 6px;
+  padding: 1px;
+}
+
+.tl-header__lang button {
+  background: none;
+  border: none;
+  padding: 3px 8px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #5a6a78;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.tl-header__lang button:hover {
+  color: #A7B0B8;
+}
+
+.tl-header__lang .is-active {
+  background: rgba(0, 140, 255, 0.12);
+  color: #00A3FF;
+}
+
+.tl-header__lang-sep {
+  display: none;
+}
+
+/* ── Login Link ──────────────────────────────────────────────────────────── */
+.tl-header__login-link {
+  color: #8a95a0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(18, 48, 68, 0.5);
+  transition: all 0.2s ease;
+}
+
+.tl-header__login-link:hover {
+  color: #00A3FF;
+  border-color: rgba(0, 140, 255, 0.35);
+  background: rgba(0, 140, 255, 0.06);
+}
+
+/* ── CTA ─────────────────────────────────────────────────────────────────── */
+.tl-header__cta-link {
+  text-decoration: none;
+}
+
+.tl-header__cta-link .tl-button {
+  padding: 6px 14px;
+  font-size: 11px;
+  height: 30px;
+  line-height: 1;
+  border-radius: 6px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ── Logged-in User ──────────────────────────────────────────────────────── */
+.tl-header__user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tl-header__username {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.tl-header__username:hover {
+  opacity: 0.85;
+}
+
+.tl-header__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #008CFF, #00A3FF);
+  color: #fff;
+}
+
+.tl-header__avatar svg {
+  width: 12px;
+  height: 12px;
+}
+
+.tl-header__user-name {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  color: #F5F7FA;
+}
+
+.tl-header__logout {
+  background: none;
+  border: 1px solid rgba(18, 48, 68, 0.5);
+  border-radius: 6px;
+  padding: 5px 6px;
+  color: #8a95a0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.tl-header__logout svg {
+  width: 14px;
+  height: 14px;
+}
+
+.tl-header__logout:hover {
+  border-color: rgba(255, 77, 77, 0.35);
+  color: #ff4d4d;
+}
+
+/* ── Hamburger ───────────────────────────────────────────────────────────── */
+.tl-header__hamburger {
+  display: none;
+  background: none;
+  border: 1px solid rgba(18, 48, 68, 0.5);
+  border-radius: 6px;
+  padding: 4px;
+  color: #A7B0B8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tl-header__hamburger:hover {
+  color: #F5F7FA;
+  border-color: rgba(0, 140, 255, 0.35);
+}
+
+/* ── Mobile Drawer ───────────────────────────────────────────────────────── */
+.tl-header__mobile {
+  display: none;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease, padding 0.35s ease;
+  background: rgba(3, 7, 10, 0.96);
+  border-top: 1px solid rgba(18, 48, 68, 0.3);
+}
+
+.tl-header__mobile.is-open {
+  max-height: 400px;
+  padding: 12px 0 20px;
+}
+
+.tl-header__mobile-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 0 20px;
+}
+
+.tl-header__mobile-link {
+  display: block;
+  padding: 10px 0;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: #A7B0B8;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(18, 48, 68, 0.25);
+  transition: color 0.2s ease;
+}
+
+.tl-header__mobile-link:hover {
+  color: #00A3FF;
+}
+
+.tl-header__mobile-actions {
+  padding: 12px 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .tl-header__nav {
+    display: none;
+  }
+  .tl-header__cta-link {
+    display: none;
+  }
+  .tl-header__hamburger {
+    display: flex;
+  }
+  .tl-header__mobile {
+    display: block;
+  }
+}
+
+@media (max-width: 480px) {
+  .tl-header__user-name {
+    display: none;
+  }
+}

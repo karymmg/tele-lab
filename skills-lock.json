@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "motion-graphics": {
+      "source": "calesthio/OpenMontage",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/motion-graphics/SKILL.md",
+      "computedHash": "608c9298432465916a79851f92fd2ba88268255a0be1504b58058da653410a87"
+    }
+  }
+}
