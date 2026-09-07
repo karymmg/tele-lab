@@ -13,6 +13,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
-  },
-});
+    // للسماح بجميع النطاقات المعاينة على Vercel
+    allowedHosts: true,
+  }
+})
