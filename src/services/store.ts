@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { RepairRequest, RepairType, PaymentStatus } from "@/types/telelab";
+import { RepairRequest, RepairType, PaymentStatus, StatusHistoryEntry } from "@/types/telelab";
 import { RepairStatusKey } from "@/utils/status";
 import { computePricing } from "@/utils/pricing";
 import { supabase } from "@/services/supabase/client";
@@ -128,7 +128,7 @@ export const repairStore = {
     const trackingNumber = generateTrackingNumber(cachedRequests.length);
     const now = new Date().toISOString();
 
-    const statusHistory = [
+    const statusHistory: StatusHistoryEntry[] = [
       {
         status: "new",
         timestamp: now,
