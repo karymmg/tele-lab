@@ -246,7 +246,8 @@ export function RepairRequestForm() {
         formData.phone,
         formData.password,
         "customer",
-        `${formData.firstName} ${formData.lastName}`
+        `${formData.firstName} ${formData.lastName}`,
+        formData.email
       );
     }
 

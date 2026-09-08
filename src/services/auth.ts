@@ -34,7 +34,8 @@ export async function registerUser(
   phone: string,
   password: string,
   role: UserRole,
-  displayName: string
+  displayName: string,
+  email?: string
 ): Promise<boolean> {
   const cleanPhone = phone.replace(/\D/g, "");
   const authEmail = getPseudoEmail(cleanPhone);
@@ -56,6 +57,7 @@ export async function registerUser(
   const { error: profileError } = await supabase.from("profiles").upsert({
     id: authData.user.id,
     phone: cleanPhone,
+    email: email || null,
     auth_email: authEmail,
     role,
     first_name: firstName,
