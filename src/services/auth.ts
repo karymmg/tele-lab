@@ -10,12 +10,17 @@ export interface AuthUser {
 }
 
 // Generates a pseudo-email for Supabase Auth (requires email format)
-const getPseudoEmail = (phone: string) =>
-  `${phone.replace(/[\s\-\+]/g, "")}@telelab.tn`;
+// Strips anything that isn't a digit first, so it's safe even if an
+// already-suffixed value (e.g. "51055101@telelab.tn") gets passed in again.
+const getPseudoEmail = (phone: string) => {
+  const digitsOnly = phone.replace(/\D/g, "");
+  return `${digitsOnly}@telelab.tn`;
+};
 
 // ─── hasAccount ──────────────────────────────────────────────────────────────
 export async function hasAccount(identifier: string): Promise<boolean> {
-  const clean = identifier.replace(/[\s\-\+]/g, "");
+  const isEmail = identifier.includes("@");
+  const clean = isEmail ? identifier : identifier.replace(/\D/g, "");
   const { data } = await supabase
     .from("profiles")
     .select("id")
@@ -31,7 +36,7 @@ export async function registerUser(
   role: UserRole,
   displayName: string
 ): Promise<boolean> {
-  const cleanPhone = phone.replace(/[\s\-\+]/g, "");
+  const cleanPhone = phone.replace(/\D/g, "");
   const authEmail = getPseudoEmail(cleanPhone);
 
   const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -71,62 +76,35 @@ export async function login(
   identifier: string,
   password: string
 ): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-  const clean = identifier.replace(/[\s\-\+]/g, "");
   const isEmail = identifier.includes("@");
+  let targetEmail = identifier;
 
-  // Step 1 – try direct Supabase auth with what the user typed
-  // If it looks like an email, use it directly; otherwise build pseudo-email
-  const directEmail = isEmail ? identifier : getPseudoEmail(clean);
+  // If the person typed a phone/username instead of an email, look up the
+  // REAL auth_email that was actually stored for them at signup time —
+  // never guess/rebuild one here. This avoids any mismatch between a
+  // guessed pseudo-email and what's actually on file.
+  if (!isEmail) {
+    const clean = identifier.replace(/\D/g, "");
+    const { data: profileLookup } = await supabase
+      .from("profiles")
+      .select("auth_email")
+      .or(`phone.eq.${clean},username.eq.${identifier}`)
+      .maybeSingle();
 
-  const { data: authData, error: authError } =
-    await supabase.auth.signInWithPassword({ email: directEmail, password });
-
-  // Step 2 – if direct login failed AND the user typed a phone/username,
-  // look up the real auth_email stored in profiles and retry
-  if (authError || !authData?.user) {
-    if (!isEmail) {
-      // Look up the profile by phone OR auth_email
-      const { data: profileLookup } = await supabase
-        .from("profiles")
-        .select("auth_email")
-        .or(`phone.eq.${clean},auth_email.ilike.%${clean}%`)
-        .maybeSingle();
-
-      if (profileLookup?.auth_email) {
-        const { data: retryAuth, error: retryError } =
-          await supabase.auth.signInWithPassword({
-            email: profileLookup.auth_email,
-            password,
-          });
-
-        if (retryError || !retryAuth?.user) {
-          return { success: false, error: "Identifiant ou mot de passe incorrect." };
-        }
-
-        // Fetch full profile
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", retryAuth.user.id)
-          .maybeSingle();
-
-        if (!profile) return { success: false, error: "Profil introuvable." };
-
-        return {
-          success: true,
-          user: {
-            username: profile.phone,
-            role: profile.role as UserRole,
-            displayName: `${profile.first_name} ${profile.last_name}`,
-          },
-        };
-      }
+    if (!profileLookup?.auth_email) {
+      return { success: false, error: "Identifiant ou mot de passe incorrect." };
     }
 
+    targetEmail = profileLookup.auth_email;
+  }
+
+  const { data: authData, error: authError } =
+    await supabase.auth.signInWithPassword({ email: targetEmail, password });
+
+  if (authError || !authData?.user) {
     return { success: false, error: "Identifiant ou mot de passe incorrect." };
   }
 
-  // Step 3 – auth succeeded, fetch profile
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
