@@ -71,40 +71,51 @@ export async function registerUser(
 }
 
 // ─── login ────────────────────────────────────────────────────────────────────
-// Accepts: real email OR phone number (e.g. 51055101) OR anything stored in profiles
+// Accepts: real email OR phone number (e.g. 51055101) OR username
 export async function login(
   identifier: string,
   password: string
 ): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-  const isEmail = identifier.includes("@");
-  let targetEmail = identifier;
+  const trimmed = identifier.trim();
+  const isEmail = trimmed.includes("@");
+  const digitsOnly = trimmed.replace(/\D/g, "");
 
-  // If the person typed a phone/username instead of an email, look up the
-  // REAL auth_email that was actually stored for them at signup time —
-  // never guess/rebuild one here. This avoids any mismatch between a
-  // guessed pseudo-email and what's actually on file.
-  if (!isEmail) {
-    const clean = identifier.replace(/\D/g, "");
-    const { data: profileLookup } = await supabase
-      .from("profiles")
-      .select("auth_email")
-      .or(`phone.eq.${clean},username.eq.${identifier}`)
-      .maybeSingle();
-
-    if (!profileLookup?.auth_email) {
-      return { success: false, error: "Identifiant ou mot de passe incorrect." };
-    }
-
-    targetEmail = profileLookup.auth_email;
+  // ── Step 1: Always look up the profile first ──
+  // Build an OR filter that covers all possible identifier types:
+  //   - phone number match (digits only)
+  //   - username match (exact)
+  //   - auth_email match (for pseudo-emails like 51055101@telelab.tn)
+  //   - email match (if they have a real email on file)
+  let filterParts: string[] = [];
+  if (digitsOnly) filterParts.push(`phone.eq.${digitsOnly}`);
+  filterParts.push(`username.eq.${trimmed}`);
+  if (isEmail) {
+    filterParts.push(`auth_email.eq.${trimmed}`);
+    filterParts.push(`email.eq.${trimmed}`);
   }
 
+  const { data: profileLookup } = await supabase
+    .from("profiles")
+    .select("auth_email")
+    .or(filterParts.join(","))
+    .maybeSingle();
+
+  if (!profileLookup?.auth_email) {
+    return { success: false, error: "Identifiant ou mot de passe incorrect." };
+  }
+
+  // ── Step 2: Sign in with the REAL auth_email from the profile ──
   const { data: authData, error: authError } =
-    await supabase.auth.signInWithPassword({ email: targetEmail, password });
+    await supabase.auth.signInWithPassword({
+      email: profileLookup.auth_email,
+      password,
+    });
 
   if (authError || !authData?.user) {
     return { success: false, error: "Identifiant ou mot de passe incorrect." };
   }
 
+  // ── Step 3: Fetch full profile ──
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")

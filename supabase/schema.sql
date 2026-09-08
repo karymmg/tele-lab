@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   last_name TEXT NOT NULL,
   phone TEXT NOT NULL,
   email TEXT,
+  auth_email TEXT,
+  username TEXT UNIQUE,
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
