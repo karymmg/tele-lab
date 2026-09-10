@@ -30,9 +30,22 @@ function mapRepairRequest(dbReq: any): RepairRequest {
       phone: dbReq.customer_phone,
       email: dbReq.customer_email || "",
     },
-    address: dbReq.address_json,
+    address: {
+      address: dbReq.address || "",
+      governorate: dbReq.governorate || "",
+      city: dbReq.city || "",
+      zone: dbReq.zone || "",
+      complement: dbReq.address_complement || "",
+      latitude: dbReq.latitude,
+      longitude: dbReq.longitude
+    },
     status: dbReq.status as RepairStatusKey,
-    statusHistory: dbReq.status_history || [],
+    statusHistory: (dbReq.repair_status_history || []).map((h: any) => ({
+      status: h.status,
+      timestamp: h.created_at,
+      note: h.note,
+      changedBy: h.changed_by
+    })),
     price: dbReq.price,
     depositAmount: dbReq.deposit_amount,
     remainingAmount: dbReq.remaining_amount,
@@ -67,7 +80,7 @@ supabase
   .subscribe();
 
 async function fetchAllFromSupabase() {
-  const { data } = await supabase.from("repair_requests").select("*").order("created_at", { ascending: false });
+  const { data } = await supabase.from("repair_requests").select("*, repair_status_history(*)").order("created_at", { ascending: false });
   if (data) {
     cachedRequests = data.map(mapRepairRequest);
     notifyUpdate();
@@ -149,10 +162,26 @@ export const repairStore = {
       customer_name: `${data.customer.firstName} ${data.customer.lastName}`,
       customer_phone: data.customer.phone,
       customer_email: data.customer.email,
-      address_json: data.address,
-      status_history: statusHistory,
+      address: data.address.address,
+      governorate: data.address.governorate,
+      city: data.address.city,
+      zone: data.address.zone,
+      address_complement: data.address.complement,
+      latitude: data.address.latitude,
+      longitude: data.address.longitude,
       payment_status: "unpaid",
-    }).then(() => fetchAllFromSupabase());
+    }).select("id").single().then(({ data: insertedReq, error }) => {
+      if (error || !insertedReq) {
+        console.error("Failed to insert repair request:", error);
+        return;
+      }
+      supabase.from("repair_status_history").insert({
+        repair_request_id: insertedReq.id,
+        status: "new",
+        note: "Demande créée en ligne par le client",
+        changed_by: "Client"
+      }).then(() => fetchAllFromSupabase());
+    });
 
     // Optimistic return
     return {
@@ -171,7 +200,13 @@ export const repairStore = {
     if (!req) return;
     const historyEntry = { status: newStatus, timestamp: new Date().toISOString(), note, changedBy };
     const newHistory = [...req.statusHistory, historyEntry];
-    await supabase.from("repair_requests").update({ status: newStatus, status_history: newHistory }).eq("id", id);
+    await supabase.from("repair_requests").update({ status: newStatus }).eq("id", id);
+    await supabase.from("repair_status_history").insert({
+      repair_request_id: id,
+      status: newStatus,
+      note,
+      changed_by: changedBy
+    });
     return { ...req, status: newStatus, statusHistory: newHistory };
   },
 
@@ -180,20 +215,27 @@ export const repairStore = {
     if (!req) return;
     const pricing = computePricing(price);
     const newStatus = req.status === "new" ? "price_confirmed" : req.status;
+    const note = `Prix fixé à ${price} DT (Acompte 30%: ${pricing.deposit} DT, Solde 70%: ${pricing.remaining} DT)`;
+    const changedBy = "Admin Tele Lab";
     const historyEntry = {
       status: newStatus,
       timestamp: new Date().toISOString(),
-      note: `Prix fixé à ${price} DT (Acompte 30%: ${pricing.deposit} DT, Solde 70%: ${pricing.remaining} DT)`,
-      changedBy: "Admin Tele Lab",
+      note,
+      changedBy,
     };
     const newHistory = [...req.statusHistory, historyEntry];
     await supabase.from("repair_requests").update({
       price: pricing.total,
       deposit_amount: pricing.deposit,
       remaining_amount: pricing.remaining,
-      status: newStatus,
-      status_history: newHistory
+      status: newStatus
     }).eq("id", id);
+    await supabase.from("repair_status_history").insert({
+      repair_request_id: id,
+      status: newStatus,
+      note,
+      changed_by: changedBy
+    });
   },
 
   async assignDriver(id: string, driverName: string, driverId?: string) {
@@ -201,43 +243,67 @@ export const repairStore = {
     if (!req) return;
     const isReturn = ["repair_ready", "driver_assigned_return", "return_in_delivery"].includes(req.status);
     const newStatus: RepairStatusKey = isReturn ? "driver_assigned_return" : "driver_assigned_pickup";
+    const note = `Livreur ${driverName} assigné pour la course`;
+    const changedBy = "Admin Tele Lab";
     const historyEntry = {
       status: newStatus,
       timestamp: new Date().toISOString(),
-      note: `Livreur ${driverName} assigné pour la course`,
-      changedBy: "Admin Tele Lab",
+      note,
+      changedBy,
     };
     const newHistory = [...req.statusHistory, historyEntry];
-    await supabase.from("repair_requests").update({ driver_id: driverId, status: newStatus, status_history: newHistory }).eq("id", id);
+    await supabase.from("repair_requests").update({ driver_id: driverId, status: newStatus }).eq("id", id);
+    await supabase.from("repair_status_history").insert({
+      repair_request_id: id,
+      status: newStatus,
+      note,
+      changed_by: changedBy
+    });
   },
 
   async assignTechnician(id: string, technicianName: string) {
     const req = cachedRequests.find(r => r.id === id);
     if (!req) return;
+    const note = `Technicien ${technicianName} en charge du dossier`;
+    const changedBy = "Admin Tele Lab";
     const historyEntry = {
       status: req.status,
       timestamp: new Date().toISOString(),
-      note: `Technicien ${technicianName} en charge du dossier`,
-      changedBy: "Admin Tele Lab",
+      note,
+      changedBy,
     };
     const newHistory = [...req.statusHistory, historyEntry];
-    await supabase.from("repair_requests").update({ technician_name: technicianName, status_history: newHistory }).eq("id", id);
+    await supabase.from("repair_requests").update({ technician_name: technicianName }).eq("id", id);
+    await supabase.from("repair_status_history").insert({
+      repair_request_id: id,
+      status: req.status,
+      note,
+      changed_by: changedBy
+    });
   },
 
   async recordPayment(id: string, paymentType: "deposit" | "full") {
     const req = cachedRequests.find(r => r.id === id);
     if (!req) return;
     const newPaymentStatus = paymentType === "deposit" ? "deposit_paid" : "fully_paid";
+    const note = paymentType === "deposit"
+              ? `Acompte de 30% (${req.depositAmount ?? 0} DT) encaissé.`
+              : `Solde final de 70% (${req.remainingAmount ?? 0} DT) encaissé. Totalité réglée.`;
+    const changedBy = "Livreur / Caisse";
     const historyEntry = {
       status: req.status,
       timestamp: new Date().toISOString(),
-      note: paymentType === "deposit"
-              ? `Acompte de 30% (${req.depositAmount ?? 0} DT) encaissé.`
-              : `Solde final de 70% (${req.remainingAmount ?? 0} DT) encaissé. Totalité réglée.`,
-      changedBy: "Livreur / Caisse",
+      note,
+      changedBy,
     };
     const newHistory = [...req.statusHistory, historyEntry];
-    await supabase.from("repair_requests").update({ payment_status: newPaymentStatus, status_history: newHistory }).eq("id", id);
+    await supabase.from("repair_requests").update({ payment_status: newPaymentStatus }).eq("id", id);
+    await supabase.from("repair_status_history").insert({
+      repair_request_id: id,
+      status: req.status,
+      note,
+      changed_by: changedBy
+    });
   },
 };
 
