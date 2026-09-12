@@ -5,8 +5,9 @@ import { RepairRequest } from "@/types/telelab";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { RepairStatusKey, REPAIR_STATUSES } from "@/utils/status";
 import { useAuth, hasAccount } from "@/services/auth";
-import { Settings, Search, X, Clock, User, Phone, DollarSign, Truck, FileText, Users, Wrench, MessageCircle, Plus } from "lucide-react";
+import { Settings, Search, X, Clock, User, Phone, DollarSign, Truck, FileText, Users, Wrench, MessageCircle, Plus, Trash2, Printer } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { RepairRequestForm } from "@/components/forms/RepairRequestForm";
 import "./AdminDashboard.css";
 
 const TECH_OPTIONS = [
@@ -30,6 +31,8 @@ export function AdminDashboard() {
   const [selectedReq, setSelectedReq] = useState<RepairRequest | null>(null);
   const [editingPrice, setEditingPrice] = useState<string>("");
   const [customNote, setCustomNote] = useState<string>("");
+  const [isAddingRequest, setIsAddingRequest] = useState(false);
+  const [printType, setPrintType] = useState<"devis" | "facture" | null>(null);
 
   // New driver form state
   const [newDriverName, setNewDriverName] = useState("");
@@ -139,6 +142,21 @@ export function AdminDashboard() {
     setSelectedReq(req);
     setEditingPrice(req.price ? String(req.price) : "");
     setCustomNote("");
+  }
+
+  function handleDeleteRequest(id: string) {
+    if (confirm("Êtes-vous sûr de vouloir supprimer définitivement cette commande ?")) {
+      repairStore.deleteRequest(id);
+      setSelectedReq(null);
+    }
+  }
+
+  function handlePrint(type: "devis" | "facture") {
+    setPrintType(type);
+    setTimeout(() => {
+      window.print();
+      setPrintType(null);
+    }, 100);
   }
 
   function handleSavePrice() {
@@ -312,6 +330,13 @@ export function AdminDashboard() {
               </div>
 
               <div className="tl-admin-filter">
+                <button 
+                  className="tl-btn-manage" 
+                  style={{ height: 44, background: "rgba(0,140,255,0.1)", color: "#00A3FF", borderColor: "rgba(0,140,255,0.3)", marginRight: 12 }}
+                  onClick={() => setIsAddingRequest(true)}
+                >
+                  <Plus size={16} /> {isArabic ? "إضافة طلب" : "Nouvelle Demande"}
+                </button>
                 <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                   <option value="ALL">{isArabic ? "جميع الحالات" : "Tous les statuts"}</option>
                   {REPAIR_STATUSES.map((k) => (
@@ -341,11 +366,11 @@ export function AdminDashboard() {
                   <tbody>
                     {filteredRequests.map((req) => (
                       <tr key={req.id}>
-                        <td className="tl-td-tracking">{req.trackingNumber}</td>
-                        <td style={{ fontSize: "12px", color: "#A7B0B8" }}>
+                        <td data-label="Réf." className="tl-td-tracking">{req.trackingNumber}</td>
+                        <td data-label="Date" style={{ fontSize: "12px", color: "#A7B0B8" }}>
                           {new Date(req.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
                         </td>
-                        <td>
+                        <td data-label="Client">
                           <div className="tl-td-client">
                             {req.customer.firstName} {req.customer.lastName}
                           </div>
@@ -360,16 +385,16 @@ export function AdminDashboard() {
                             )}
                           </div>
                         </td>
-                        <td>
+                        <td data-label="Appareil">
                           <div style={{ fontWeight: 600 }}>
                             {req.brand} {req.model}
                           </div>
                           <div style={{ fontSize: "12px", color: "#A7B0B8" }}>{req.problem}</div>
                         </td>
-                        <td>
+                        <td data-label="Statut">
                           <StatusBadge status={req.status} />
                         </td>
-                        <td>
+                        <td data-label="Prix">
                           {req.price ? (
                             <div>
                               <strong style={{ color: "#00A3FF" }}>{req.price} DT</strong>
@@ -383,12 +408,12 @@ export function AdminDashboard() {
                             </span>
                           )}
                         </td>
-                        <td style={{ fontSize: "12px", color: "#A7B0B8" }}>
+                        <td data-label="Équipe" style={{ fontSize: "12px", color: "#A7B0B8" }}>
                           {req.driverName ? <div>🚚 {req.driverName.split(" (")[0]}</div> : null}
                           {req.technicianName ? <div>🔧 {req.technicianName.split(" (")[0]}</div> : null}
                           {!req.driverName && !req.technicianName && <span>—</span>}
                         </td>
-                        <td>
+                        <td data-label="Action">
                           <button className="tl-btn-manage" onClick={() => handleOpenModal(req)}>
                             <Settings size={14} /> Gérer
                           </button>
@@ -592,9 +617,14 @@ export function AdminDashboard() {
                     <StatusBadge status={selectedReq.status} />
                   </div>
                 </div>
-                <button type="button" className="tl-modal-close" onClick={() => setSelectedReq(null)}>
-                  <X size={18} />
-                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button type="button" className="tl-modal-close" onClick={() => handleDeleteRequest(selectedReq.id)} title="Supprimer" style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }}>
+                    <Trash2 size={16} />
+                  </button>
+                  <button type="button" className="tl-modal-close" onClick={() => setSelectedReq(null)}>
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
 
               {/* Client & Address Info */}
@@ -640,6 +670,17 @@ export function AdminDashboard() {
                   <button className="tl-btn-manage" onClick={handleSavePrice}>
                     Enregistrer
                   </button>
+
+                  {selectedReq.price && (
+                    <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+                      <button className="tl-btn-manage" onClick={() => handlePrint("devis")} style={{ borderColor: "rgba(167, 176, 184, 0.4)" }}>
+                        <Printer size={14} /> Devis
+                      </button>
+                      <button className="tl-btn-manage" onClick={() => handlePrint("facture")} style={{ borderColor: "rgba(167, 176, 184, 0.4)" }}>
+                        <Printer size={14} /> Facture
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {selectedReq.price && (
@@ -789,6 +830,86 @@ export function AdminDashboard() {
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── ADD REQUEST MODAL ───────────────────────────────────────── */}
+        {isAddingRequest && (
+          <div className="tl-modal-overlay" onClick={() => setIsAddingRequest(false)}>
+            <div className="tl-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 900, padding: 0, overflow: "hidden" }}>
+              <div className="tl-modal-header" style={{ padding: "20px 32px 0", borderBottom: "none" }}>
+                <h2 style={{ margin: 0 }}>{isArabic ? "إضافة طلب جديد" : "Nouvelle Demande"}</h2>
+                <button type="button" className="tl-modal-close" onClick={() => setIsAddingRequest(false)}>
+                  <X size={18} />
+                </button>
+              </div>
+              <div style={{ maxHeight: "calc(90vh - 80px)", overflowY: "auto" }}>
+                <RepairRequestForm />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── PRINT TEMPLATE (Hidden by default, shown via CSS @media print) ── */}
+        {printType && selectedReq && (
+          <div className="tl-print-container">
+            <div className="tl-print-header">
+              <h1>TELE LAB</h1>
+              <p>by Telephonic Pro</p>
+              <br />
+              <p>Adresse: Tunis, Tunisie</p>
+              <p>Tél: +216 55 123 456</p>
+            </div>
+            
+            <div className="tl-print-title">
+              <h2>{printType === "devis" ? "DEVIS ESTIMATIF" : "FACTURE"}</h2>
+              <p>Référence : <strong>{selectedReq.trackingNumber}</strong></p>
+              <p>Date : {new Date().toLocaleDateString("fr-FR")}</p>
+            </div>
+
+            <div className="tl-print-client">
+              <h3>Client</h3>
+              <p><strong>Nom:</strong> {selectedReq.customer.firstName} {selectedReq.customer.lastName}</p>
+              <p><strong>Téléphone:</strong> {selectedReq.customer.phone}</p>
+              <p><strong>Adresse:</strong> {selectedReq.address.address}, {selectedReq.address.city}</p>
+            </div>
+
+            <table className="tl-print-table">
+              <thead>
+                <tr>
+                  <th>Désignation</th>
+                  <th>Appareil</th>
+                  <th>Problème déclaré</th>
+                  <th>Prix TTC</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Réparation {selectedReq.repairType === "hardware" ? "Matérielle" : "Logicielle"}</td>
+                  <td>{selectedReq.brand} {selectedReq.model}</td>
+                  <td>{selectedReq.problem}</td>
+                  <td>{selectedReq.price} DT</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div className="tl-print-totals">
+              <p><strong>Total TTC :</strong> {selectedReq.price} DT</p>
+              {printType === "devis" && (
+                <>
+                  <p>Acompte 30% requis : {selectedReq.depositAmount} DT</p>
+                  <p>Solde 70% à la livraison : {selectedReq.remainingAmount} DT</p>
+                </>
+              )}
+              {printType === "facture" && (
+                <p>Status de paiement : <strong>{selectedReq.paymentStatus === "fully_paid" ? "Payé en totalité" : "En attente"}</strong></p>
+              )}
+            </div>
+
+            <div className="tl-print-footer">
+              <p>Merci de votre confiance.</p>
+              <p>Tele Lab garantit ses réparations pendant 3 mois.</p>
             </div>
           </div>
         )}

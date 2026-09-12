@@ -250,6 +250,17 @@ export const repairStore = {
     });
   },
 
+  async deleteRequest(id: string) {
+    // Delete history first due to foreign key constraint (if cascade is not set)
+    await supabase.from("repair_status_history").delete().eq("repair_request_id", id);
+    // Delete the request
+    await supabase.from("repair_requests").delete().eq("id", id);
+    
+    // Update local cache manually or wait for realtime subscription to kick in
+    cachedRequests = cachedRequests.filter(r => r.id !== id);
+    notifyUpdate();
+  },
+
   async assignDriver(id: string, driverName: string, driverId?: string) {
     const req = cachedRequests.find(r => r.id === id);
     if (!req) return;
