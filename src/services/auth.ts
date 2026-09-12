@@ -60,15 +60,24 @@ export async function registerUser(
   const firstName = nameParts[0] || "Inconnu";
   const lastName = nameParts.slice(1).join(" ") || "Inconnu";
 
-  const { error: profileError } = await supabase.from("profiles").upsert({
-    id: authData.user.id,
-    phone: cleanPhone,
-    email: email || null,
-    auth_email: authEmail,
-    role,
-    first_name: firstName,
-    last_name: lastName,
-  });
+  // Use a SECURITY DEFINER RPC instead of a direct table upsert.
+  // Reason: right after auth.signUp(), if "Confirm email" is enabled in
+  // Supabase, there is no active session yet (auth.uid() is NULL), so a
+  // direct insert into profiles gets silently rejected by RLS. Since we
+  // use fake @telelab.tn emails, the user could never confirm to unblock
+  // it. The RPC bypasses RLS safely and always creates the profile.
+  const { error: profileError } = await supabase.rpc(
+    "create_profile_for_new_user",
+    {
+      p_id: authData.user.id,
+      p_phone: cleanPhone,
+      p_email: email || null,
+      p_auth_email: authEmail,
+      p_role: role,
+      p_first_name: firstName,
+      p_last_name: lastName,
+    }
+  );
 
   if (profileError) {
     console.error("Profile insert error:", profileError);
