@@ -51,6 +51,7 @@ export function Header() {
           <span className="tl-header__logo-text">
             TELE<span className="tl-header__logo-accent">LAB</span>
           </span>
+          <span className="tl-header__logo-sub">by Telephonic Pro</span>
         </Link>
 
         {/* Desktop Nav */}

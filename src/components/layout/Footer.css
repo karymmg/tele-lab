@@ -18,6 +18,15 @@
   font-size: 18px;
 }
 
+.tl-footer__logo-sub {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(167, 176, 184, 0.5);
+  letter-spacing: 0.06em;
+  margin-top: -4px;
+}
+
 .tl-footer__baseline {
   color: var(--color-text-secondary);
   font-size: 14px;

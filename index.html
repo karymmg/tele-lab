@@ -44,8 +44,16 @@
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        margin-bottom: 32px;
+        margin-bottom: 6px;
         animation: splashPulse 1.5s ease-in-out infinite;
+      }
+      #tl-splash .tl-logo-sub {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.7rem;
+        font-weight: 500;
+        color: rgba(167, 176, 184, 0.55);
+        letter-spacing: 0.08em;
+        margin-bottom: 28px;
       }
       #tl-splash .tl-spinner {
         width: 40px;
@@ -75,6 +83,7 @@
     <!-- Splash Screen (removed by React after mount) -->
     <div id="tl-splash">
       <div class="tl-logo-text">TELE LAB</div>
+      <div class="tl-logo-sub">by Telephonic Pro</div>
       <div class="tl-spinner"></div>
       <div class="tl-tagline">Réparation à domicile</div>
     </div>
