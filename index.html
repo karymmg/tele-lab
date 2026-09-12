@@ -2,7 +2,13 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- PWA: prevent zoom, pinch, and horizontal overscroll -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#008CFF" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="apple-touch-icon" href="/icon-512.jpg" />
     <title>Tele Lab — Réparation de téléphone à domicile</title>
     <meta name="description" content="Tele Lab répare votre téléphone à domicile. Livraison gratuite, paiement en deux fois, suivi en temps réel." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -11,8 +17,68 @@
       href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=Tajawal:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
+    <style>
+      /* ─── Splash / Loading Screen ────────────────────────────────── */
+      #tl-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #03070A;
+        transition: opacity 0.5s ease, visibility 0.5s ease;
+      }
+      #tl-splash.hide {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      #tl-splash .tl-logo-text {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 800;
+        font-size: 2.4rem;
+        letter-spacing: -0.02em;
+        background: linear-gradient(135deg, #008CFF 0%, #00A3FF 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 32px;
+        animation: splashPulse 1.5s ease-in-out infinite;
+      }
+      #tl-splash .tl-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(0, 140, 255, 0.15);
+        border-top-color: #008CFF;
+        border-radius: 50%;
+        animation: splashSpin 0.8s linear infinite;
+      }
+      #tl-splash .tl-tagline {
+        margin-top: 20px;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.85rem;
+        color: rgba(167, 176, 184, 0.7);
+        letter-spacing: 0.05em;
+      }
+      @keyframes splashSpin {
+        to { transform: rotate(360deg); }
+      }
+      @keyframes splashPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+      }
+    </style>
   </head>
   <body>
+    <!-- Splash Screen (removed by React after mount) -->
+    <div id="tl-splash">
+      <div class="tl-logo-text">TELE LAB</div>
+      <div class="tl-spinner"></div>
+      <div class="tl-tagline">Réparation à domicile</div>
+    </div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

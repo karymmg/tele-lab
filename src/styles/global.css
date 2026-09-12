@@ -10,12 +10,25 @@ body,
   height: 100%;
 }
 
+html {
+  /* Prevent pull-to-refresh and horizontal swipe navigation */
+  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  /* Prevent pinch zoom on iOS */
+  touch-action: manipulation;
+}
+
 body {
   margin: 0;
   font-family: var(--font-body);
   color: var(--color-text);
   background: var(--color-bg);
   -webkit-font-smoothing: antialiased;
+  /* Prevent horizontal overflow / swipe */
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  /* Disable text selection long-press context menu on mobile (optional) */
+  -webkit-tap-highlight-color: transparent;
 }
 
 [dir="rtl"] body {
