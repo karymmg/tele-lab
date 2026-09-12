@@ -16,6 +16,9 @@ html {
   overscroll-behavior-x: none;
   /* Prevent pinch zoom on iOS */
   touch-action: manipulation;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 }
 
 body {
@@ -26,9 +29,15 @@ body {
   -webkit-font-smoothing: antialiased;
   /* Prevent horizontal overflow / swipe */
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
   overscroll-behavior-x: none;
   /* Disable text selection long-press context menu on mobile (optional) */
   -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  height: 100%;
 }
 
 [dir="rtl"] body {
