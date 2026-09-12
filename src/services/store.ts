@@ -3,6 +3,7 @@ import { RepairRequest, RepairType, PaymentStatus, StatusHistoryEntry } from "@/
 import { RepairStatusKey } from "@/utils/status";
 import { computePricing } from "@/utils/pricing";
 import { supabase } from "@/services/supabase/client";
+import { useAuth } from "@/services/auth";
 
 export interface Driver {
   id: string;
@@ -137,7 +138,10 @@ export const repairStore = {
     return cachedRequests.filter((r) => r.customer.phone.replace(/[\s\-\+]/g, "").includes(clean));
   },
 
-  create(data: Omit<RepairRequest, "id" | "trackingNumber" | "createdAt" | "status" | "statusHistory" | "paymentStatus">) {
+  async create(
+    data: Omit<RepairRequest, "id" | "trackingNumber" | "createdAt" | "status" | "statusHistory" | "paymentStatus">,
+    userId?: string | null
+  ): Promise<RepairRequest> {
     const trackingNumber = generateTrackingNumber(cachedRequests.length);
     const now = new Date().toISOString();
 
@@ -150,43 +154,51 @@ export const repairStore = {
       },
     ];
 
-    // Fire and forget to Supabase
-    supabase.from("repair_requests").insert({
-      tracking_number: trackingNumber,
-      repair_type: data.repairType,
-      brand: data.brand || "",
-      model: data.model || "",
-      problem: data.problem || "",
-      description: data.problemDescription || "",
-      status: "new",
-      customer_name: `${data.customer.firstName} ${data.customer.lastName}`.trim() || "Client",
-      customer_phone: data.customer.phone || "",
-      customer_email: data.customer.email || "",
-      address: data.address.address || "Non renseigné",
-      governorate: data.address.governorate || "",
-      city: data.address.city || "",
-      zone: data.address.zone || "",
-      address_complement: data.address.complement || "",
-      latitude: data.address.latitude ?? null,
-      longitude: data.address.longitude ?? null,
-      payment_status: "unpaid",
-    }).select("id").single().then(({ data: insertedReq, error }) => {
-      if (error || !insertedReq) {
-        console.error("Failed to insert repair request:", error);
-        return;
-      }
-      supabase.from("repair_status_history").insert({
-        repair_request_id: insertedReq.id,
+    // Await the Supabase insert — no more fire-and-forget
+    const { data: insertedReq, error } = await supabase
+      .from("repair_requests")
+      .insert({
+        tracking_number: trackingNumber,
+        user_id: userId || null,
+        repair_type: data.repairType,
+        brand: data.brand || "",
+        model: data.model || "",
+        problem: data.problem || "",
+        description: data.problemDescription || "",
         status: "new",
-        note: "Demande créée en ligne par le client",
-        changed_by: "Client"
-      }).then(() => fetchAllFromSupabase());
+        customer_name: `${data.customer.firstName} ${data.customer.lastName}`.trim() || "Client",
+        customer_phone: data.customer.phone || "",
+        customer_email: data.customer.email || "",
+        address: data.address.address || "Non renseigné",
+        governorate: data.address.governorate || "",
+        city: data.address.city || "",
+        zone: data.address.zone || "",
+        address_complement: data.address.complement || "",
+        latitude: data.address.latitude ?? null,
+        longitude: data.address.longitude ?? null,
+        payment_status: "unpaid",
+      })
+      .select("id")
+      .single();
+
+    if (error || !insertedReq) {
+      console.error("Failed to insert repair request:", error);
+      throw new Error(error?.message || "Impossible de créer la demande.");
+    }
+
+    // Insert initial status history entry
+    await supabase.from("repair_status_history").insert({
+      repair_request_id: insertedReq.id,
+      status: "new",
+      note: "Demande créée en ligne par le client",
+      changed_by: "Client",
     });
 
-    // Optimistic return
+    await fetchAllFromSupabase();
+
     return {
       ...data,
-      id: "temp-" + Date.now(),
+      id: insertedReq.id,
       trackingNumber,
       createdAt: now,
       status: "new" as RepairStatusKey,
@@ -321,6 +333,48 @@ export function useRepairRequests() {
   }, []);
 
   return requests;
+}
+
+// Hook that returns only the current user's repair requests (by auth.uid)
+export function useMyRepairRequests() {
+  const { user } = useAuth();
+  const [myRequests, setMyRequests] = useState<RepairRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setMyRequests([]);
+      setLoading(false);
+      return;
+    }
+
+    async function fetchMine() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("repair_requests")
+        .select("*, repair_status_history(*)")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        setMyRequests(data.map(mapRepairRequest));
+      }
+      setLoading(false);
+    }
+
+    fetchMine();
+
+    // Re-fetch when global store updates (covers admin changes)
+    function handleUpdate() {
+      fetchMine();
+    }
+    window.addEventListener(EVENT_NAME, handleUpdate);
+    return () => {
+      window.removeEventListener(EVENT_NAME, handleUpdate);
+    };
+  }, [user?.id]);
+
+  return { myRequests, loading };
 }
 
 export function useDrivers() {

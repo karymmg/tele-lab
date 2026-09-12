@@ -4,6 +4,7 @@ import { supabase } from "@/services/supabase/client";
 export type UserRole = "admin" | "customer" | "driver" | "technician";
 
 export interface AuthUser {
+  id: string;
   username: string;
   role: UserRole;
   displayName: string;
@@ -19,40 +20,45 @@ const getPseudoEmail = (phone: string) => {
 
 // ─── hasAccount ──────────────────────────────────────────────────────────────
 export async function hasAccount(identifier: string): Promise<boolean> {
-  const isEmail = identifier.includes("@");
-  const clean = isEmail ? identifier : identifier.replace(/\D/g, "");
-  const { data } = await supabase
-    .from("profiles")
-    .select("id")
-    .or(`phone.eq.${clean},auth_email.eq.${identifier}`)
-    .maybeSingle();
+  const { data } = await supabase.rpc("get_auth_email_by_identifier", {
+    p_identifier: identifier,
+  });
   return !!data;
 }
 
 // ─── registerUser ─────────────────────────────────────────────────────────────
+// Returns the new user's UUID on success, null on failure
 export async function registerUser(
   phone: string,
   password: string,
   role: UserRole,
   displayName: string,
   email?: string
-): Promise<boolean> {
+): Promise<string | null> {
   const cleanPhone = phone.replace(/\D/g, "");
   const authEmail = getPseudoEmail(cleanPhone);
 
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: authEmail,
     password,
+    options: {
+      // Disable email confirmation redirect for pseudo-emails
+      emailRedirectTo: undefined,
+      data: {
+        phone: cleanPhone,
+        role,
+      },
+    },
   });
 
   if (authError || !authData.user) {
     console.error("SignUp error:", authError);
-    return false;
+    return null;
   }
 
   const nameParts = displayName.split(" ");
-  const firstName = nameParts[0] || "Unknown";
-  const lastName = nameParts.slice(1).join(" ") || "Unknown";
+  const firstName = nameParts[0] || "Inconnu";
+  const lastName = nameParts.slice(1).join(" ") || "Inconnu";
 
   const { error: profileError } = await supabase.from("profiles").upsert({
     id: authData.user.id,
@@ -66,10 +72,10 @@ export async function registerUser(
 
   if (profileError) {
     console.error("Profile insert error:", profileError);
-    return false;
+    return null;
   }
 
-  return true;
+  return authData.user.id;
 }
 
 // ─── login ────────────────────────────────────────────────────────────────────
@@ -79,37 +85,26 @@ export async function login(
   password: string
 ): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
   const trimmed = identifier.trim();
-  const isEmail = trimmed.includes("@");
-  const digitsOnly = trimmed.replace(/\D/g, "");
 
-  // ── Step 1: Always look up the profile first ──
-  // Build an OR filter that covers all possible identifier types:
-  //   - phone number match (digits only)
-  //   - username match (exact)
-  //   - auth_email match (for pseudo-emails like 51055101@telelab.tn)
-  //   - email match (if they have a real email on file)
-  let filterParts: string[] = [];
-  if (digitsOnly) filterParts.push(`phone.eq.${digitsOnly}`);
-  filterParts.push(`username.eq.${trimmed}`);
-  if (isEmail) {
-    filterParts.push(`auth_email.eq.${trimmed}`);
-    filterParts.push(`email.eq.${trimmed}`);
+  // ── Step 1: Use secure RPC to look up the auth_email (bypasses RLS) ──
+  const { data: authEmailResult, error: rpcError } = await supabase.rpc(
+    "get_auth_email_by_identifier",
+    { p_identifier: trimmed }
+  );
+
+  if (rpcError) {
+    console.error("RPC lookup error:", rpcError);
+    return { success: false, error: "Erreur de connexion au serveur." };
   }
 
-  const { data: profileLookup } = await supabase
-    .from("profiles")
-    .select("auth_email")
-    .or(filterParts.join(","))
-    .maybeSingle();
-
-  if (!profileLookup?.auth_email) {
+  if (!authEmailResult) {
     return { success: false, error: "Identifiant ou mot de passe incorrect." };
   }
 
   // ── Step 2: Sign in with the REAL auth_email from the profile ──
   const { data: authData, error: authError } =
     await supabase.auth.signInWithPassword({
-      email: profileLookup.auth_email,
+      email: authEmailResult,
       password,
     });
 
@@ -117,7 +112,7 @@ export async function login(
     return { success: false, error: "Identifiant ou mot de passe incorrect." };
   }
 
-  // ── Step 3: Fetch full profile ──
+  // ── Step 3: Fetch full profile (now authenticated, RLS allows it) ──
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
@@ -129,6 +124,7 @@ export async function login(
   return {
     success: true,
     user: {
+      id: authData.user.id,
       username: profile.phone,
       role: profile.role as UserRole,
       displayName: `${profile.first_name} ${profile.last_name}`,
@@ -171,6 +167,7 @@ export function useAuth() {
       if (mounted) {
         if (profile) {
           setUser({
+            id: session.user.id,
             username: profile.phone,
             role: profile.role as UserRole,
             displayName: `${profile.first_name} ${profile.last_name}`,
@@ -200,6 +197,7 @@ export function useAuth() {
 
           if (mounted && profile) {
             setUser({
+              id: session.user.id,
               username: profile.phone,
               role: profile.role as UserRole,
               displayName: `${profile.first_name} ${profile.last_name}`,

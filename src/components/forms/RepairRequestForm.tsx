@@ -10,6 +10,7 @@ import {
 } from "@/data/telelabData";
 import { repairStore } from "@/services/store";
 import { registerUser } from "@/services/auth";
+import { supabase } from "@/services/supabase/client";
 import "./RepairRequestForm.css";
 
 interface FormData {
@@ -214,44 +215,78 @@ export function RepairRequestForm() {
   }
 
   async function handleSubmit() {
+    if (!validateStep(step)) return;
+    setErrorMsg("");
+
     const finalBrand = formData.brand === "OTHER" ? formData.customBrand : formData.brand;
     const finalModel = formData.model || formData.customModel;
 
-    const newReq = repairStore.create({
-      repairType: formData.repairType,
-      brand: finalBrand,
-      model: finalModel,
-      problem: formData.problem,
-      problemDescription: formData.problemDescription,
-      photos: formData.photos,
-      customer: {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        phone: formData.phone,
-        email: formData.email,
-      },
-      address: {
-        governorate: formData.governorate,
-        city: formData.city,
-        zone: formData.zone,
-        address: formData.address,
-        complement: formData.complement,
-        latitude: formData.latitude,
-        longitude: formData.longitude,
-      },
-    });
+    // ── Step 1: Register user FIRST (if requested) ──────────────────────────
+    let userId: string | null = null;
 
     if (formData.createAccount && formData.password) {
-      await registerUser(
+      const newUserId = await registerUser(
         formData.phone,
         formData.password,
         "customer",
         `${formData.firstName} ${formData.lastName}`,
-        formData.email
+        formData.email || undefined
       );
+
+      if (!newUserId) {
+        setErrorMsg(
+          isArabic
+            ? "تعذّر إنشاء الحساب. ربما رقم الهاتف مستخدم مسبقاً. يمكنك إرسال الطلب بدون حساب."
+            : "Impossible de créer le compte. Ce numéro est peut-être déjà utilisé. Vous pouvez soumettre sans créer de compte."
+        );
+        return;
+      }
+
+      userId = newUserId;
+    } else {
+      // Check if already logged in — link repair to existing session
+      const { data: { session } } = await supabase.auth.getSession();
+      userId = session?.user?.id ?? null;
     }
 
-    setCreatedRequest(newReq);
+    // ── Step 2: Create the repair request (linked to user if available) ──────
+    try {
+      const newReq = await repairStore.create(
+        {
+          repairType: formData.repairType,
+          brand: finalBrand,
+          model: finalModel,
+          problem: formData.problem,
+          problemDescription: formData.problemDescription,
+          photos: formData.photos,
+          customer: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            phone: formData.phone,
+            email: formData.email,
+          },
+          address: {
+            governorate: formData.governorate,
+            city: formData.city,
+            zone: formData.zone,
+            address: formData.address,
+            complement: formData.complement,
+            latitude: formData.latitude,
+            longitude: formData.longitude,
+          },
+        },
+        userId
+      );
+
+      setCreatedRequest(newReq);
+    } catch (err: any) {
+      console.error("Create repair error:", err);
+      setErrorMsg(
+        isArabic
+          ? "حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مجدداً."
+          : "Une erreur est survenue lors de l'envoi de la demande. Veuillez réessayer."
+      );
+    }
   }
 
   function copyTrackingNumber() {
