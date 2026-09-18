@@ -3,10 +3,11 @@
    ========================================================================== */
 
 .tl-header {
-  background: rgba(3, 7, 10, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(18, 48, 68, 0.35);
+  background: rgba(10, 15, 25, 0.4);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 30px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   padding-top: env(safe-area-inset-top, 0px);
@@ -15,9 +16,9 @@
 }
 
 .tl-header.is-scrolled {
-  background: rgba(3, 7, 10, 0.92);
-  border-bottom-color: rgba(18, 48, 68, 0.6);
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  background: rgba(5, 10, 15, 0.55);
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 /* ── Inner ───────────────────────────────────────────────────────────────── */
@@ -25,9 +26,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding-block: 8px;
-  height: 48px;
+  gap: 12px;
+  padding-block: 4px;
+  height: 34px;
 }
 
 /* ── Logo ────────────────────────────────────────────────────────────────── */
@@ -44,7 +45,7 @@
 .tl-header__logo-text {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 15px;
+  font-size: 11px;
   letter-spacing: 0.05em;
   color: #F5F7FA;
   line-height: 1;
@@ -56,19 +57,19 @@
 
 .tl-header__logo-sub {
   font-family: var(--font-body);
-  font-size: 8px;
+  font-size: 6px;
   font-weight: 500;
   color: rgba(167, 176, 184, 0.55);
   letter-spacing: 0.06em;
   line-height: 1;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 /* ── Nav ─────────────────────────────────────────────────────────────────── */
 .tl-header__nav {
   display: flex;
-  gap: 18px;
-  font-size: 13px;
+  gap: 12px;
+  font-size: 10px;
   font-weight: 500;
   color: #8a95a0;
 }
@@ -121,9 +122,9 @@
 .tl-header__lang button {
   background: none;
   border: none;
-  padding: 3px 8px;
+  padding: 2px 6px;
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: #5a6a78;
@@ -151,8 +152,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   border: 1px solid rgba(18, 48, 68, 0.5);
   transition: all 0.2s ease;
@@ -170,11 +171,11 @@
 }
 
 .tl-header__cta-link .tl-button {
-  padding: 6px 14px;
-  font-size: 11px;
-  height: 30px;
+  padding: 4px 10px;
+  font-size: 9px;
+  height: 24px;
   line-height: 1;
-  border-radius: 6px;
+  border-radius: 5px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -203,8 +204,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: linear-gradient(135deg, #008CFF, #00A3FF);
   color: #fff;
@@ -217,7 +218,7 @@
 
 .tl-header__user-name {
   font-family: var(--font-display);
-  font-size: 12px;
+  font-size: 9px;
   font-weight: 600;
   color: #F5F7FA;
 }
@@ -225,8 +226,8 @@
 .tl-header__logout {
   background: none;
   border: 1px solid rgba(18, 48, 68, 0.5);
-  border-radius: 6px;
-  padding: 5px 6px;
+  border-radius: 4px;
+  padding: 3px 4px;
   color: #8a95a0;
   cursor: pointer;
   display: flex;
