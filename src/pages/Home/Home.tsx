@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/Button";
 import {
   Smartphone,
   Battery,
@@ -14,19 +13,33 @@ import {
   PhoneCall,
   Truck,
   Star,
+  Store,
+  Package,
+  ShoppingBag,
+  Shield,
+  Cpu,
+  Monitor,
 } from "lucide-react";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useParallax } from "@/hooks/useParallax";
 import { useScrollProgress } from "@/hooks/useScrollProgress";
+import { CircuitBackground } from "@/components/ui/CircuitBackground";
 import "./Home.css";
 
 /* ── Static data ──────────────────────────────────────────────────────────── */
 
-const SERVICES = [
-  { icon: Smartphone, titleKey: "services.screen",    desc: "Remplacement LCD / OLED" },
-  { icon: Battery,    titleKey: "services.battery",   desc: "Remplacement batterie & connecteurs" },
-  { icon: HomeIcon,   titleKey: "services.homeVisit", desc: "Collecte et retour à domicile" },
-  { icon: Headphones, titleKey: "services.support",   desc: "Réponse en moins de 15 min", highlight: true },
+const REPAIR_SERVICES = [
+  { icon: Smartphone, title: "Écran LCD / OLED", desc: "Remplacement d'écran toutes marques" },
+  { icon: Battery,    title: "Batterie & Charge", desc: "Batterie, connecteurs & ports" },
+  { icon: Cpu,        title: "Micro-soudure", desc: "Réparations au niveau carte mère" },
+  { icon: Headphones, title: "Support 24/7", desc: "Réponse en moins de 15 min" },
+];
+
+const SHOP_CATEGORIES = [
+  { icon: ShoppingBag, title: "Coques & Protection", desc: "Cases, anti-cass, films" },
+  { icon: Battery,     title: "Chargeurs & Câbles", desc: "Originaux et compatibles" },
+  { icon: Headphones,  title: "AirPods & Speakers", desc: "Audio haute qualité" },
+  { icon: Monitor,     title: "Occasion", desc: "Téléphones, PC, Consoles", highlight: true },
 ];
 
 const STEPS = [
@@ -56,6 +69,7 @@ export function Home() {
       {/* ── HERO ──────────────────────────────────────────────────────── */}
       <section className="tl-hero">
         <div className="tl-hero__glow" aria-hidden="true" />
+        <CircuitBackground />
         <div className="container tl-hero__inner">
 
           {/* Copy */}
@@ -74,22 +88,27 @@ export function Home() {
             </h1>
 
             <p className="tl-hero__subtitle animate-in delay-2">
-              {t("hero.subtitle")}
+              Réparation professionnelle à domicile & boutique d'accessoires et d'appareils d'occasion — tout au même endroit.
             </p>
 
+            {/* Two CTA buttons — Repair + Shop */}
             <div className="tl-hero__ctas animate-in delay-3">
               <Link to="/demande">
-                <button className="tl-btn-primary">{t("hero.ctaPrimary")}</button>
+                <button className="tl-btn-primary">
+                  <Wrench size={18} /> {t("hero.ctaPrimary")}
+                </button>
               </Link>
-              <Link to="/tracking">
-                <button className="tl-btn-ghost">{t("hero.ctaSecondary")}</button>
+              <Link to="/shop">
+                <button className="tl-btn-shop">
+                  <Store size={18} /> Visiter la Boutique
+                </button>
               </Link>
             </div>
 
             <div className="tl-hero__badges animate-in delay-4">
               <span className="tl-badge"><Star size={13} /> {t("hero.badge")}</span>
-              <span className="tl-badge"><CheckCircle size={13} /> {t("trustBar.warranty")}</span>
-              <span className="tl-badge"><CheckCircle size={13} /> {t("trustBar.diagnostic")}</span>
+              <span className="tl-badge"><Shield size={13} /> {t("trustBar.warranty")}</span>
+              <span className="tl-badge"><Store size={13} /> Boutique en ligne</span>
               <span className="tl-badge"><Truck size={13} /> {t("trustBar.payment")}</span>
             </div>
           </div>
@@ -113,35 +132,103 @@ export function Home() {
         </div>
       </section>
 
-      {/* ── SERVICES ──────────────────────────────────────────────────── */}
+      {/* ── DUAL PURPOSE BANNER ─────────────────────────────────────── */}
+      <section className="tl-dual-banner">
+        <div className="container">
+          <div className="tl-dual-grid">
+            <Link to="/demande" className="tl-dual-card tl-dual-card--repair reveal-left">
+              <div className="tl-dual-card__icon">
+                <Wrench size={32} />
+              </div>
+              <div className="tl-dual-card__content">
+                <h3>Réparation à Domicile</h3>
+                <p>Écrans, batteries, micro-soudure — collecte & retour gratuits</p>
+              </div>
+              <ArrowRight size={20} className="tl-dual-card__arrow" />
+            </Link>
+            <Link to="/shop" className="tl-dual-card tl-dual-card--shop reveal-right">
+              <div className="tl-dual-card__icon tl-dual-card__icon--shop">
+                <Store size={32} />
+              </div>
+              <div className="tl-dual-card__content">
+                <h3>Boutique en Ligne</h3>
+                <p>Accessoires neufs, téléphones & consoles d'occasion</p>
+              </div>
+              <ArrowRight size={20} className="tl-dual-card__arrow" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── SERVICES — Repair ─────────────────────────────────────────── */}
       <section id="services" className="tl-section container">
         <div className="tl-section__header reveal">
           <div className="tl-eyebrow">
             <span className="tl-eyebrow__line" />
-            <span>NOS SERVICES</span>
+            <span>RÉPARATION</span>
           </div>
-          <h2>TOUT CE DONT VOTRE TÉLÉPHONE A BESOIN</h2>
+          <h2>RÉPARATION PROFESSIONNELLE</h2>
+          <p className="tl-section__subtitle">
+            Nos techniciens experts réparent votre appareil à domicile avec des pièces de qualité et une garantie de 3 mois.
+          </p>
         </div>
 
         <div className="tl-services-grid stagger">
-          {SERVICES.map(({ icon: Icon, titleKey, desc, highlight }) => (
-            <article
-              key={titleKey}
-              className={`tl-service-card reveal${highlight ? " tl-service-card--highlight" : ""}`}
-            >
+          {REPAIR_SERVICES.map(({ icon: Icon, title, desc }) => (
+            <article key={title} className="tl-service-card reveal">
               <div className="tl-service-card__top">
                 <Icon className="tl-service-card__icon" size={28} />
                 <ArrowRight className="tl-service-card__arrow" size={18} />
               </div>
-              <h3>{t(titleKey)}</h3>
+              <h3>{title}</h3>
               <p>{desc}</p>
             </article>
           ))}
         </div>
       </section>
 
+      {/* ── SERVICES — Shop ──────────────────────────────────────────── */}
+      <section className="tl-section tl-how-bg">
+        <div className="container">
+          <div className="tl-section__header reveal">
+            <div className="tl-eyebrow tl-eyebrow--shop">
+              <span className="tl-eyebrow__line" />
+              <span>BOUTIQUE</span>
+            </div>
+            <h2>ACCESSOIRES & MARCHÉ DE L'OCCASION</h2>
+            <p className="tl-section__subtitle">
+              Achetez des accessoires neufs premium ou trouvez des appareils d'occasion à des prix imbattables. Vous pouvez aussi vendre votre ancien appareil !
+            </p>
+          </div>
+
+          <div className="tl-services-grid stagger">
+            {SHOP_CATEGORIES.map(({ icon: Icon, title, desc, highlight }) => (
+              <article
+                key={title}
+                className={`tl-service-card reveal${highlight ? " tl-service-card--shop-highlight" : ""}`}
+              >
+                <div className="tl-service-card__top">
+                  <Icon className="tl-service-card__icon tl-service-card__icon--shop" size={28} />
+                  <ArrowRight className="tl-service-card__arrow" size={18} />
+                </div>
+                <h3>{title}</h3>
+                <p>{desc}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="tl-shop-cta-row reveal" style={{ marginTop: 48, textAlign: "center" }}>
+            <Link to="/shop">
+              <button className="tl-btn-shop" style={{ padding: "16px 40px", fontSize: 16 }}>
+                <Store size={20} /> Explorer la Boutique
+              </button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ── COMMENT ÇA MARCHE — vertical alternating timeline ────────── */}
-      <section id="how-it-works" className="tl-section tl-how-bg">
+      <section id="how-it-works" className="tl-section">
         <div className="container">
           <div className="tl-section__header reveal" style={{ textAlign: "center", maxWidth: "none" }}>
             <div className="tl-eyebrow" style={{ justifyContent: "center" }}>
@@ -292,6 +379,11 @@ export function Home() {
             <span className="tl-stat__value">30 min</span>
             <span className="tl-stat__label">{t("stats.avgTime")}</span>
           </div>
+          <div className="tl-stat reveal">
+            <Store className="tl-stat__icon" size={36} style={{ color: "#8b5cf6" }} />
+            <span className="tl-stat__value">200+</span>
+            <span className="tl-stat__label" style={{ color: "#8b5cf6" }}>PRODUITS EN BOUTIQUE</span>
+          </div>
         </div>
       </section>
 
@@ -300,10 +392,15 @@ export function Home() {
         <div className="tl-final-cta reveal-scale">
           <div className="tl-final-cta__glow" aria-hidden="true" />
           <h2>{t("finalCta.title")}</h2>
-          <p>{t("finalCta.subtitle")}</p>
-          <Link to="/demande">
-            <button className="tl-btn-primary">{t("finalCta.button")}</button>
-          </Link>
+          <p>Réparation à domicile ou shopping en ligne — on est là pour vous.</p>
+          <div className="tl-final-cta__btns">
+            <Link to="/demande">
+              <button className="tl-btn-primary"><Wrench size={18} /> {t("finalCta.button")}</button>
+            </Link>
+            <Link to="/shop">
+              <button className="tl-btn-shop"><Store size={18} /> Boutique</button>
+            </Link>
+          </div>
         </div>
       </section>
 

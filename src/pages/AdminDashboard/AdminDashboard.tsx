@@ -5,9 +5,12 @@ import { RepairRequest } from "@/types/telelab";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { RepairStatusKey, REPAIR_STATUSES } from "@/utils/status";
 import { useAuth, hasAccount } from "@/services/auth";
-import { Settings, Search, X, Clock, User, Phone, DollarSign, Truck, FileText, Users, Wrench, MessageCircle, Plus, Trash2, Printer } from "lucide-react";
+import { Settings, Search, X, Clock, User, Phone, DollarSign, Truck, FileText, Users, Wrench, MessageCircle, Plus, Trash2, Printer, Store, Package } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { RepairRequestForm } from "@/components/forms/RepairRequestForm";
+import { useShopCategories, useShopProducts, shopStore } from "@/services/shopStore";
+import { useOccasions, useSiteVisits, occasionStore } from "@/services/occasionStore";
+import { OccasionProduct } from "@/types/occasion";
 import "./AdminDashboard.css";
 
 const TECH_OPTIONS = [
@@ -16,7 +19,7 @@ const TECH_OPTIONS = [
   "Bilel Mansouri (Spécialiste Logiciel & Déblocage)",
 ];
 
-type TabType = "repairs" | "clients" | "drivers";
+type TabType = "repairs" | "clients" | "drivers" | "shop" | "occasions";
 
 export function AdminDashboard() {
   const { t, i18n } = useTranslation();
@@ -38,6 +41,25 @@ export function AdminDashboard() {
   const [newDriverName, setNewDriverName] = useState("");
   const [newDriverPhone, setNewDriverPhone] = useState("");
   const [newDriverZone, setNewDriverZone] = useState("");
+
+  // --- SHOP STATE ---
+  const categories = useShopCategories();
+  const products = useShopProducts();
+  const occasions = useOccasions();
+  const siteVisits = useSiteVisits();
+  const [shopView, setShopView] = useState<"products" | "categories">("products");
+  
+  // Category Form
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatIcon, setNewCatIcon] = useState("");
+  
+  // Product Form
+  const [newProdName, setNewProdName] = useState("");
+  const [newProdDesc, setNewProdDesc] = useState("");
+  const [newProdPrice, setNewProdPrice] = useState("");
+  const [newProdStock, setNewProdStock] = useState("");
+  const [newProdImg, setNewProdImg] = useState("");
+  const [newProdCat, setNewProdCat] = useState("");
 
   // --- REPAIRS LOGIC ---
   const totalCount = requests.length;
@@ -134,6 +156,62 @@ export function AdminDashboard() {
   function handleDeleteDriver(id: string) {
     if(confirm("Êtes-vous sûr de vouloir supprimer ce livreur ?")) {
       repairStore.deleteDriver(id);
+    }
+  }
+
+  // --- SHOP HANDLERS ---
+  async function handleAddCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+    try {
+      await shopStore.addCategory(newCatName, newCatIcon);
+      setNewCatName("");
+      setNewCatIcon("");
+    } catch (err: any) {
+      alert("Erreur lors de l'ajout de la catégorie : " + err.message);
+    }
+  }
+
+  async function handleDeleteCategory(id: string) {
+    if(confirm("Supprimer cette catégorie ? (Attention, cela supprimera tous les produits liés)")) {
+      try {
+        await shopStore.deleteCategory(id);
+      } catch (err) {
+        alert("Erreur lors de la suppression");
+      }
+    }
+  }
+
+  async function handleAddProduct(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newProdName.trim() || !newProdPrice || !newProdCat) return;
+    try {
+      await shopStore.addProduct({
+        categoryId: newProdCat,
+        name: newProdName,
+        description: newProdDesc,
+        price: parseFloat(newProdPrice),
+        stock: parseInt(newProdStock) || 0,
+        imageUrl: newProdImg,
+        active: true
+      });
+      setNewProdName("");
+      setNewProdDesc("");
+      setNewProdPrice("");
+      setNewProdStock("");
+      setNewProdImg("");
+    } catch (err) {
+      alert("Erreur lors de l'ajout du produit");
+    }
+  }
+
+  async function handleDeleteProduct(id: string) {
+    if(confirm("Supprimer ce produit ?")) {
+      try {
+        await shopStore.deleteProduct(id);
+      } catch (err) {
+        alert("Erreur lors de la suppression");
+      }
     }
   }
 
@@ -239,6 +317,15 @@ export function AdminDashboard() {
             <p>{isArabic ? `متصل بـ: ${user?.displayName || "Admin"}` : `Connecté : ${user?.displayName || "Admin"}`}</p>
           </div>
           
+          <div className="tl-kpi-card" style={{ padding: "12px 24px", minWidth: 200, display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <span style={{ color: "#A7B0B8", fontSize: 12, textTransform: "uppercase", letterSpacing: 1 }}>
+              {isArabic ? "إجمالي زوار الموقع" : "Visiteurs du site"}
+            </span>
+            <span style={{ color: "#FFF", fontSize: 28, fontWeight: 700, marginTop: 4 }}>
+              {siteVisits}
+            </span>
+          </div>
+          
           <div className="tl-admin-tabs">
             <button 
               className={`tl-tab-btn ${activeTab === "repairs" ? "is-active" : ""}`}
@@ -257,6 +344,18 @@ export function AdminDashboard() {
               onClick={() => { setActiveTab("drivers"); setSearch(""); }}
             >
               <Truck size={16} /> {isArabic ? "الموصلين" : "Livreurs"}
+            </button>
+            <button 
+              className={`tl-tab-btn ${activeTab === "shop" ? "is-active" : ""}`}
+              onClick={() => { setActiveTab("shop"); setSearch(""); }}
+            >
+              <Store size={16} /> {isArabic ? "المتجر" : "Boutique"}
+            </button>
+            <button 
+              className={`tl-tab-btn ${activeTab === "occasions" ? "is-active" : ""}`}
+              onClick={() => { setActiveTab("occasions"); setSearch(""); }}
+            >
+              <Package size={16} /> {isArabic ? "سوق المستعمل" : "Occasions"}
             </button>
           </div>
         </div>
@@ -600,6 +699,284 @@ export function AdminDashboard() {
                    Aucun livreur configuré. Ajoutez-en un ci-dessus.
                  </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB CONTENT: SHOP ───────────────────────────────────────── */}
+        {activeTab === "shop" && (
+          <div className="tl-tab-content fade-in">
+            
+            <div className="tl-admin-toolbar" style={{ justifyContent: "flex-start", gap: 16 }}>
+              <button 
+                className={`tl-tab-btn ${shopView === "products" ? "is-active" : ""}`}
+                onClick={() => setShopView("products")}
+                style={{ padding: "8px 16px", borderRadius: 8 }}
+              >
+                <Package size={16} /> Produits
+              </button>
+              <button 
+                className={`tl-tab-btn ${shopView === "categories" ? "is-active" : ""}`}
+                onClick={() => setShopView("categories")}
+                style={{ padding: "8px 16px", borderRadius: 8 }}
+              >
+                <FileText size={16} /> Catégories
+              </button>
+            </div>
+
+            {shopView === "categories" && (
+              <>
+                <div className="tl-admin-toolbar" style={{ alignItems: "flex-end", marginTop: 24 }}>
+                  <form onSubmit={handleAddCategory} style={{ display: "flex", gap: 16, flexWrap: "wrap", width: "100%" }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Nom de la catégorie</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ex: Chargeurs"
+                        value={newCatName}
+                        onChange={e => setNewCatName(e.target.value)}
+                        style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Nom d'icône (Optionnel)</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: BatteryCharging"
+                        value={newCatIcon}
+                        onChange={e => setNewCatIcon(e.target.value)}
+                        style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                      />
+                    </div>
+                    <div>
+                      <button type="submit" className="tl-btn-manage" style={{ height: 40, background: "rgba(0,140,255,0.1)", color: "#00A3FF", borderColor: "rgba(0,140,255,0.3)" }}>
+                        <Plus size={16} /> Ajouter une catégorie
+                      </button>
+                    </div>
+                  </form>
+                </div>
+                
+                <div className="tl-admin-table-card">
+                  <table className="tl-admin-table">
+                    <thead>
+                      <tr>
+                        <th>Catégorie</th>
+                        <th>Icône</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {categories.map(cat => (
+                        <tr key={cat.id}>
+                          <td style={{ fontWeight: 600 }}>{cat.name}</td>
+                          <td style={{ color: "#A7B0B8" }}>{cat.icon || "—"}</td>
+                          <td>
+                            <button className="tl-btn-manage" style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteCategory(cat.id)}>
+                              <Trash2 size={14} /> Supprimer
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {categories.length === 0 && (
+                        <tr><td colSpan={3} style={{ textAlign: "center", padding: 20, color: "#A7B0B8" }}>Aucune catégorie.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {shopView === "products" && (
+              <>
+                <div className="tl-admin-toolbar" style={{ alignItems: "flex-end", marginTop: 24 }}>
+                  <form onSubmit={handleAddProduct} style={{ display: "flex", gap: 16, flexWrap: "wrap", width: "100%" }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Nom du produit</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ex: Câble iPhone Rapide"
+                        value={newProdName}
+                        onChange={e => setNewProdName(e.target.value)}
+                        style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 150 }}>
+                      <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Prix (DT)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        required
+                        placeholder="0.00"
+                        value={newProdPrice}
+                        onChange={e => setNewProdPrice(e.target.value)}
+                        style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 100 }}>
+                      <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Stock</label>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={newProdStock}
+                        onChange={e => setNewProdStock(e.target.value)}
+                        style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Catégorie</label>
+                      <select
+                        required
+                        value={newProdCat}
+                        onChange={e => setNewProdCat(e.target.value)}
+                        style={{ width: "100%" }}
+                      >
+                        <option value="">Sélectionner...</option>
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ flex: 2, minWidth: 300 }}>
+                      <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Image URL</label>
+                      <input
+                        type="text"
+                        placeholder="https://..."
+                        value={newProdImg}
+                        onChange={e => setNewProdImg(e.target.value)}
+                        style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                      />
+                    </div>
+                    <div>
+                      <button type="submit" className="tl-btn-manage" style={{ height: 40, background: "rgba(0,140,255,0.1)", color: "#00A3FF", borderColor: "rgba(0,140,255,0.3)" }}>
+                        <Plus size={16} /> Ajouter Produit
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                <div className="tl-admin-table-card">
+                  <table className="tl-admin-table">
+                    <thead>
+                      <tr>
+                        <th>Image</th>
+                        <th>Produit</th>
+                        <th>Catégorie</th>
+                        <th>Prix</th>
+                        <th>Stock</th>
+                        <th>Vues</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.map(prod => {
+                        const cat = categories.find(c => c.id === prod.categoryId);
+                        return (
+                          <tr key={prod.id}>
+                            <td>
+                              {prod.imageUrl ? (
+                                <img src={prod.imageUrl} alt={prod.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6 }} />
+                              ) : (
+                                <div style={{ width: 40, height: 40, background: "#123044", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={16} color="#A7B0B8" /></div>
+                              )}
+                            </td>
+                            <td style={{ fontWeight: 600 }}>{prod.name}</td>
+                            <td style={{ color: "#A7B0B8", fontSize: 12 }}>{cat?.name || "—"}</td>
+                            <td><strong style={{ color: "#10b981" }}>{prod.price} DT</strong></td>
+                            <td>{prod.stock > 0 ? prod.stock : <span style={{ color: "#ef4444" }}>Rupture</span>}</td>
+                            <td>{prod.views || 0}</td>
+                            <td>
+                              <button className="tl-btn-manage" style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteProduct(prod.id)}>
+                                <Trash2 size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {products.length === 0 && (
+                        <tr><td colSpan={7} style={{ textAlign: "center", padding: 20, color: "#A7B0B8" }}>Aucun produit.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── TAB CONTENT: OCCASIONS ───────────────────────────────────────── */}
+        {activeTab === "occasions" && (
+          <div className="tl-tab-content fade-in">
+            <div className="tl-admin-toolbar" style={{ justifyContent: "flex-end", marginBottom: 16 }}>
+              <div style={{ color: "#A7B0B8", fontSize: 14 }}>
+                {isArabic ? "مجموع الإعلانات :" : "Total Annonces :"} <strong>{occasions.length}</strong>
+              </div>
+            </div>
+
+            <div className="tl-admin-table-card">
+              <table className="tl-admin-table">
+                <thead>
+                  <tr>
+                    <th>Image</th>
+                    <th>Détails</th>
+                    <th>Vendeur (WhatsApp)</th>
+                    <th>Prix</th>
+                    <th>Vues</th>
+                    <th>Statut</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {occasions.map(occ => (
+                    <tr key={occ.id}>
+                      <td>
+                        {occ.photos && occ.photos.length > 0 ? (
+                          <img src={occ.photos[0]} alt={occ.model} style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 6 }} />
+                        ) : (
+                          <div style={{ width: 50, height: 50, background: "#123044", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={20} color="#A7B0B8" /></div>
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{occ.model}</div>
+                        <div style={{ color: "#A7B0B8", fontSize: 12 }}>{occ.type} • {occ.brand}</div>
+                        <div style={{ color: "#00A3FF", fontSize: 12, marginTop: 4 }}>État: {occ.condition}</div>
+                      </td>
+                      <td>
+                        <a href={`https://wa.me/${occ.whatsappNumber.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" style={{ color: "#25d366" }}>
+                          {occ.whatsappNumber}
+                        </a>
+                      </td>
+                      <td><strong style={{ color: "#10b981" }}>{occ.price} DT</strong></td>
+                      <td>{occ.views || 0}</td>
+                      <td>
+                        <select 
+                          value={occ.status} 
+                          onChange={(e) => occasionStore.updateOccasionStatus(occ.id, e.target.value as any)}
+                          style={{ padding: "4px 8px", fontSize: 12, borderRadius: 4, background: "#03070A", border: "1px solid #123044", color: occ.status === "active" ? "#10b981" : "#A7B0B8" }}
+                        >
+                          <option value="active">Active</option>
+                          <option value="pending">En attente</option>
+                          <option value="sold">Vendue</option>
+                          <option value="rejected">Rejetée</option>
+                        </select>
+                      </td>
+                      <td>
+                        <button 
+                          className="tl-btn-manage" 
+                          style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)", padding: "6px 8px" }} 
+                          onClick={() => {
+                            if(confirm("Supprimer cette annonce définitivement ?")) occasionStore.deleteOccasion(occ.id);
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {occasions.length === 0 && (
+                    <tr><td colSpan={7} style={{ textAlign: "center", padding: 20, color: "#A7B0B8" }}>Aucune annonce d'occasion.</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

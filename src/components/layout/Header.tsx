@@ -11,6 +11,7 @@ export function Header() {
   const { user, isLoggedIn, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const isArabic = i18n.language === "ar";
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -35,6 +36,7 @@ export function Header() {
 
   const navLinks = [
     { to: "/", label: t("nav.home") },
+    { to: "/shop", label: isArabic ? "المتجر" : "Boutique" },
     { to: "/#services", label: t("nav.services") },
     { to: "/#how-it-works", label: t("nav.howItWorks") },
     { to: "/#pricing", label: t("nav.pricing") },
