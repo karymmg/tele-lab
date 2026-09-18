@@ -34,7 +34,15 @@ export function Header() {
     setMobileOpen(false);
   }, [location.pathname, location.hash]);
 
-
+  const navLinks = [
+    { to: "/", label: t("nav.home") },
+    { to: "/shop", label: isArabic ? "المتجر" : "Boutique" },
+    { to: "/#services", label: t("nav.services") },
+    { to: "/#how-it-works", label: t("nav.howItWorks") },
+    { to: "/#pricing", label: t("nav.pricing") },
+    { to: "/tracking", label: t("nav.track") },
+    { to: "/#contact", label: t("nav.contact") },
+  ];
 
   return (
     <header className={`tl-header ${scrolled ? "is-scrolled" : ""}`}>
@@ -48,7 +56,14 @@ export function Header() {
           <span className="tl-header__logo-sub">by Telephonic Pro</span>
         </Link>
 
-
+        {/* Desktop Nav */}
+        <nav className="tl-header__nav">
+          {navLinks.map((link) => (
+            <Link key={link.to} to={link.to}>
+              {link.label}
+            </Link>
+          ))}
+        </nav>
 
         {/* Actions */}
         <div className="tl-header__actions">
@@ -110,7 +125,13 @@ export function Header() {
 
       {/* Mobile Drawer */}
       <div className={`tl-header__mobile ${mobileOpen ? "is-open" : ""}`}>
-
+        <nav className="tl-header__mobile-nav">
+          {navLinks.map((link) => (
+            <Link key={link.to} to={link.to} className="tl-header__mobile-link">
+              {link.label}
+            </Link>
+          ))}
+        </nav>
 
         <div className="tl-header__mobile-actions">
           {isLoggedIn ? (
