@@ -889,18 +889,18 @@ export function AdminDashboard() {
                           const rc = roleColors[u.role] || roleColors.customer;
                           return (
                             <tr key={u.id}>
-                              <td>
+                              <td data-label={isArabic ? "المستخدم" : "Utilisateur"}>
                                 <div className="tl-td-client" style={{ fontWeight: 600 }}>
                                   {u.first_name} {u.last_name}
                                 </div>
                               </td>
-                              <td className="tl-td-client-phone">
+                              <td data-label={isArabic ? "الهاتف" : "Téléphone"} className="tl-td-client-phone">
                                 <a href={`tel:${u.phone}`}>{u.phone}</a>
                               </td>
                               <td style={{ color: "var(--color-text-secondary)", fontSize: "13px" }}>
                                 {u.auth_email || u.email || "—"}
                               </td>
-                              <td>
+                              <td data-label={isArabic ? "الدور" : "Rôle"}>
                                 <select
                                   value={u.role}
                                   onChange={(e) => handleRoleChange(u.id, e.target.value)}
@@ -1170,10 +1170,11 @@ export function AdminDashboard() {
                       <tbody>
                         {categories.map(cat => (
                           <tr key={cat.id}>
-                            <td style={{ fontWeight: 600 }}>{cat.name}</td>
+                            <td data-label="Catégorie" style={{ fontWeight: 600 }}>{cat.name}</td>
                             <td style={{ color: "var(--color-text-secondary)" }}>{cat.icon || "—"}</td>
-                            <td>
-                              <button className="tl-btn-manage" style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteCategory(cat.id)}>
+                            <td data-label="Action">
+                              <button className="tl-btn-manage"
+                                style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteCategory(cat.id)}>
                                 <Trash2 size={14} /> Supprimer
                               </button>
                             </td>
@@ -1282,13 +1283,14 @@ export function AdminDashboard() {
                                   <div style={{ width: 40, height: 40, background: "var(--color-border)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={16} color="var(--color-text-secondary)" /></div>
                                 )}
                               </td>
-                              <td style={{ fontWeight: 600 }}>{prod.name}</td>
+                              <td data-label="Produit" style={{ fontWeight: 600 }}>{prod.name}</td>
                               <td style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>{cat?.name || "—"}</td>
-                              <td><strong style={{ color: "#10b981" }}>{prod.price} DT</strong></td>
-                              <td>{prod.stock > 0 ? prod.stock : <span style={{ color: "#ef4444" }}>Rupture</span>}</td>
-                              <td>{prod.views || 0}</td>
-                              <td>
-                                <button className="tl-btn-manage" style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteProduct(prod.id)}>
+                              <td data-label="Prix"><strong style={{ color: "#10b981" }}>{prod.price} DT</strong></td>
+                              <td data-label="Stock">{prod.stock > 0 ? prod.stock : <span style={{ color: "#ef4444" }}>Rupture</span>}</td>
+                              <td data-label="Vues">{prod.views || 0}</td>
+                              <td data-label="Action">
+                              <button className="tl-btn-manage"
+                                style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteProduct(prod.id)}>
                                   <Trash2 size={14} />
                                 </button>
                               </td>
@@ -1350,8 +1352,8 @@ export function AdminDashboard() {
                             {occ.whatsappNumber}
                           </a>
                         </td>
-                        <td><strong style={{ color: "#10b981" }}>{occ.price} DT</strong></td>
-                        <td>{occ.views || 0}</td>
+                        <td data-label="Prix"><strong style={{ color: "#10b981" }}>{occ.price} DT</strong></td>
+                        <td data-label="Vues">{occ.views || 0}</td>
                         <td>
                           <select 
                             value={occ.status} 
