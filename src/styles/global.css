@@ -7,7 +7,7 @@
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
 }
 
 html {
@@ -27,8 +27,8 @@ body {
   font-family: var(--font-body);
   color: var(--color-text);
   background-color: var(--color-bg);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-top: env(safe-area-inset-top);
+  /* Safe area top padding is handled by the Header directly, 
+     bottom padding should be on the footer, so we don't double up here */
   /* Suble grid background */
   background-image: 
     linear-gradient(var(--color-border) 1px, transparent 1px),

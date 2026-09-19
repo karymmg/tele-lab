@@ -1,6 +1,6 @@
 .tl-footer {
   border-top: 1px solid var(--color-border);
-  padding-block: 40px;
+  padding: 40px 0 calc(40px + env(safe-area-inset-bottom, 0px)) 0;
   margin-top: var(--space-section-desktop);
 }
 
