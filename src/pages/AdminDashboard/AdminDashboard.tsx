@@ -1144,31 +1144,33 @@ export function AdminDashboard() {
                 </div>
                 
                 <div className="tl-admin-table-card">
-                  <table className="tl-admin-table">
-                    <thead>
-                      <tr>
-                        <th>Catégorie</th>
-                        <th>Icône</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {categories.map(cat => (
-                        <tr key={cat.id}>
-                          <td style={{ fontWeight: 600 }}>{cat.name}</td>
-                          <td style={{ color: "var(--color-text-secondary)" }}>{cat.icon || "—"}</td>
-                          <td>
-                            <button className="tl-btn-manage" style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteCategory(cat.id)}>
-                              <Trash2 size={14} /> Supprimer
-                            </button>
-                          </td>
+                  <div className="tl-table-wrapper">
+                    <table className="tl-admin-table">
+                      <thead>
+                        <tr>
+                          <th>Catégorie</th>
+                          <th>Icône</th>
+                          <th>Action</th>
                         </tr>
-                      ))}
-                      {categories.length === 0 && (
-                        <tr><td colSpan={3} style={{ textAlign: "center", padding: 20, color: "var(--color-text-secondary)" }}>Aucune catégorie.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {categories.map(cat => (
+                          <tr key={cat.id}>
+                            <td style={{ fontWeight: 600 }}>{cat.name}</td>
+                            <td style={{ color: "var(--color-text-secondary)" }}>{cat.icon || "—"}</td>
+                            <td>
+                              <button className="tl-btn-manage" style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteCategory(cat.id)}>
+                                <Trash2 size={14} /> Supprimer
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {categories.length === 0 && (
+                          <tr><td colSpan={3} style={{ textAlign: "center", padding: 20, color: "var(--color-text-secondary)" }}>Aucune catégorie.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </>
             )}
@@ -1241,48 +1243,50 @@ export function AdminDashboard() {
                 </div>
 
                 <div className="tl-admin-table-card">
-                  <table className="tl-admin-table">
-                    <thead>
-                      <tr>
-                        <th>Image</th>
-                        <th>Produit</th>
-                        <th>Catégorie</th>
-                        <th>Prix</th>
-                        <th>Stock</th>
-                        <th>Vues</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {products.map(prod => {
-                        const cat = categories.find(c => c.id === prod.categoryId);
-                        return (
-                          <tr key={prod.id}>
-                            <td>
-                              {prod.imageUrl ? (
-                                <img src={prod.imageUrl} alt={prod.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6 }} />
-                              ) : (
-                                <div style={{ width: 40, height: 40, background: "var(--color-border)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={16} color="var(--color-text-secondary)" /></div>
-                              )}
-                            </td>
-                            <td style={{ fontWeight: 600 }}>{prod.name}</td>
-                            <td style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>{cat?.name || "—"}</td>
-                            <td><strong style={{ color: "#10b981" }}>{prod.price} DT</strong></td>
-                            <td>{prod.stock > 0 ? prod.stock : <span style={{ color: "#ef4444" }}>Rupture</span>}</td>
-                            <td>{prod.views || 0}</td>
-                            <td>
-                              <button className="tl-btn-manage" style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteProduct(prod.id)}>
-                                <Trash2 size={14} />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {products.length === 0 && (
-                        <tr><td colSpan={7} style={{ textAlign: "center", padding: 20, color: "var(--color-text-secondary)" }}>Aucun produit.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
+                  <div className="tl-table-wrapper">
+                    <table className="tl-admin-table">
+                      <thead>
+                        <tr>
+                          <th>Image</th>
+                          <th>Produit</th>
+                          <th>Catégorie</th>
+                          <th>Prix</th>
+                          <th>Stock</th>
+                          <th>Vues</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {products.map(prod => {
+                          const cat = categories.find(c => c.id === prod.categoryId);
+                          return (
+                            <tr key={prod.id}>
+                              <td>
+                                {prod.imageUrl ? (
+                                  <img src={prod.imageUrl} alt={prod.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6 }} />
+                                ) : (
+                                  <div style={{ width: 40, height: 40, background: "var(--color-border)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={16} color="var(--color-text-secondary)" /></div>
+                                )}
+                              </td>
+                              <td style={{ fontWeight: 600 }}>{prod.name}</td>
+                              <td style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>{cat?.name || "—"}</td>
+                              <td><strong style={{ color: "#10b981" }}>{prod.price} DT</strong></td>
+                              <td>{prod.stock > 0 ? prod.stock : <span style={{ color: "#ef4444" }}>Rupture</span>}</td>
+                              <td>{prod.views || 0}</td>
+                              <td>
+                                <button className="tl-btn-manage" style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteProduct(prod.id)}>
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {products.length === 0 && (
+                          <tr><td colSpan={7} style={{ textAlign: "center", padding: 20, color: "var(--color-text-secondary)" }}>Aucun produit.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </>
             )}
@@ -1299,70 +1303,72 @@ export function AdminDashboard() {
             </div>
 
             <div className="tl-admin-table-card">
-              <table className="tl-admin-table">
-                <thead>
-                  <tr>
-                    <th>Image</th>
-                    <th>Détails</th>
-                    <th>Vendeur (WhatsApp)</th>
-                    <th>Prix</th>
-                    <th>Vues</th>
-                    <th>Statut</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {occasions.map(occ => (
-                    <tr key={occ.id}>
-                      <td>
-                        {occ.photos && occ.photos.length > 0 ? (
-                          <img src={occ.photos[0]} alt={occ.model} style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 6 }} />
-                        ) : (
-                          <div style={{ width: 50, height: 50, background: "var(--color-border)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={20} color="var(--color-text-secondary)" /></div>
-                        )}
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 600 }}>{occ.model}</div>
-                        <div style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>{occ.type} • {occ.brand}</div>
-                        <div style={{ color: "#00A3FF", fontSize: 12, marginTop: 4 }}>État: {occ.condition}</div>
-                      </td>
-                      <td>
-                        <a href={`https://wa.me/${occ.whatsappNumber.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" style={{ color: "#25d366" }}>
-                          {occ.whatsappNumber}
-                        </a>
-                      </td>
-                      <td><strong style={{ color: "#10b981" }}>{occ.price} DT</strong></td>
-                      <td>{occ.views || 0}</td>
-                      <td>
-                        <select 
-                          value={occ.status} 
-                          onChange={(e) => occasionStore.updateOccasionStatus(occ.id, e.target.value as any)}
-                          style={{ padding: "4px 8px", fontSize: 12, borderRadius: 4, background: "var(--color-bg)", border: "1px solid var(--color-border)", color: occ.status === "active" ? "#10b981" : "var(--color-text-secondary)" }}
-                        >
-                          <option value="active">Active</option>
-                          <option value="pending">En attente</option>
-                          <option value="sold">Vendue</option>
-                          <option value="rejected">Rejetée</option>
-                        </select>
-                      </td>
-                      <td>
-                        <button 
-                          className="tl-btn-manage" 
-                          style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)", padding: "6px 8px" }} 
-                          onClick={() => {
-                            if(confirm("Supprimer cette annonce définitivement ?")) occasionStore.deleteOccasion(occ.id);
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
+              <div className="tl-table-wrapper">
+                <table className="tl-admin-table">
+                  <thead>
+                    <tr>
+                      <th>Image</th>
+                      <th>Détails</th>
+                      <th>Vendeur (WhatsApp)</th>
+                      <th>Prix</th>
+                      <th>Vues</th>
+                      <th>Statut</th>
+                      <th>Action</th>
                     </tr>
-                  ))}
-                  {occasions.length === 0 && (
-                    <tr><td colSpan={7} style={{ textAlign: "center", padding: 20, color: "var(--color-text-secondary)" }}>Aucune annonce d'occasion.</td></tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {occasions.map(occ => (
+                      <tr key={occ.id}>
+                        <td>
+                          {occ.photos && occ.photos.length > 0 ? (
+                            <img src={occ.photos[0]} alt={occ.model} style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 6 }} />
+                          ) : (
+                            <div style={{ width: 50, height: 50, background: "var(--color-border)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={20} color="var(--color-text-secondary)" /></div>
+                          )}
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{occ.model}</div>
+                          <div style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>{occ.type} • {occ.brand}</div>
+                          <div style={{ color: "#00A3FF", fontSize: 12, marginTop: 4 }}>État: {occ.condition}</div>
+                        </td>
+                        <td>
+                          <a href={`https://wa.me/${occ.whatsappNumber.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" style={{ color: "#25d366" }}>
+                            {occ.whatsappNumber}
+                          </a>
+                        </td>
+                        <td><strong style={{ color: "#10b981" }}>{occ.price} DT</strong></td>
+                        <td>{occ.views || 0}</td>
+                        <td>
+                          <select 
+                            value={occ.status} 
+                            onChange={(e) => occasionStore.updateOccasionStatus(occ.id, e.target.value as any)}
+                            style={{ padding: "4px 8px", fontSize: 12, borderRadius: 4, background: "var(--color-bg)", border: "1px solid var(--color-border)", color: occ.status === "active" ? "#10b981" : "var(--color-text-secondary)" }}
+                          >
+                            <option value="active">Active</option>
+                            <option value="pending">En attente</option>
+                            <option value="sold">Vendue</option>
+                            <option value="rejected">Rejetée</option>
+                          </select>
+                        </td>
+                        <td>
+                          <button 
+                            className="tl-btn-manage" 
+                            style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)", padding: "6px 8px" }} 
+                            onClick={() => {
+                              if(confirm("Supprimer cette annonce définitivement ?")) occasionStore.deleteOccasion(occ.id);
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {occasions.length === 0 && (
+                      <tr><td colSpan={7} style={{ textAlign: "center", padding: 20, color: "var(--color-text-secondary)" }}>Aucune annonce d'occasion.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

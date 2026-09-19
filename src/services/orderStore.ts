@@ -110,30 +110,37 @@ export const orderStore = {
   }): Promise<ShopOrder | null> {
     const orderNumber = generateOrderNumber();
 
-    const { data: inserted, error } = await supabase
-      .from("shop_orders")
-      .insert({
-        order_number: orderNumber,
-        user_id: data.userId || null,
-        customer_name: data.customerName,
-        customer_phone: data.customerPhone,
-        customer_address: data.customerAddress,
-        customer_city: data.customerCity,
-        customer_governorate: data.customerGovernorate,
-        items: data.items,
-        total_amount: data.totalAmount,
-        status: "pending",
-        notes: data.notes || "",
-      })
-      .select()
-      .single();
+    const insertData = {
+      order_number: orderNumber,
+      user_id: data.userId || null,
+      customer_name: data.customerName,
+      customer_phone: data.customerPhone,
+      customer_address: data.customerAddress,
+      customer_city: data.customerCity,
+      customer_governorate: data.customerGovernorate,
+      items: data.items,
+      total_amount: data.totalAmount,
+      status: "pending",
+      notes: data.notes || "",
+    };
 
-    if (error || !inserted) {
+    const { error } = await supabase
+      .from("shop_orders")
+      .insert(insertData);
+
+    if (error) {
       console.error("Failed to create order:", error);
       return null;
     }
 
-    return mapOrder(inserted);
+    // Since RLS prevents guests from selecting their own inserted row,
+    // we return the locally constructed order instead of relying on .select()
+    return mapOrder({
+      id: "temp-" + Date.now(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...insertData,
+    });
   },
 
   async updateStatus(id: string, newStatus: OrderStatus) {
