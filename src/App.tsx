@@ -1,7 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { PwaDock } from "@/components/layout/PwaDock";
 import { Home } from "@/pages/Home/Home";
 import { RequestRepair } from "@/pages/RequestRepair/RequestRepair";
 import { Tracking } from "@/pages/Tracking/Tracking";
@@ -51,7 +50,6 @@ export default function App() {
         />
       </Routes>
       <Footer />
-      <PwaDock />
     </>
   );
 }
