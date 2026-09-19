@@ -25,7 +25,15 @@ body {
   margin: 0;
   font-family: var(--font-body);
   color: var(--color-text);
-  background: var(--color-bg);
+  background-color: var(--color-bg);
+  /* Suble grid background */
+  background-image: 
+    linear-gradient(var(--color-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-position: center top;
+  background-attachment: fixed;
+  
   -webkit-font-smoothing: antialiased;
   /* Prevent horizontal overflow / swipe */
   overflow-x: hidden;
@@ -34,6 +42,44 @@ body {
   overscroll-behavior-x: none;
   /* Disable text selection long-press context menu on mobile (optional) */
   -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+
+/* Electro Line Animated Scanline & Glow */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  background: var(--neon-blob);
+  background-size: 100vw 100vh;
+  background-repeat: no-repeat;
+  z-index: -2;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  top: -100vh;
+  left: 0;
+  width: 100vw;
+  height: 200vh;
+  pointer-events: none;
+  /* The electro line */
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 140, 255, 0.02) 48%,
+    var(--color-primary) 50%,
+    rgba(0, 140, 255, 0.02) 52%,
+    transparent 100%
+  );
+  opacity: 0.15;
+  z-index: -1;
+  animation: electroScan 8s linear infinite;
 }
 
 #root {
@@ -178,4 +224,9 @@ html {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+@keyframes electroScan {
+  0% { transform: translateY(-50%); }
+  100% { transform: translateY(50%); }
 }

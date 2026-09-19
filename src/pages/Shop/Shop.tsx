@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useShopCategories, useShopProducts, shopStore } from "@/services/shopStore";
 import { useOccasions, occasionStore } from "@/services/occasionStore";
 import { useAuth } from "@/services/auth";
-import { Search, Store, ShoppingBag, Package, Plus, UserCheck, MessageCircle } from "lucide-react";
+import { useCartStore } from "@/services/cartStore";
+import { Search, Store, ShoppingBag, Package, Plus, UserCheck, MessageCircle, ShoppingCart } from "lucide-react";
 import { Link } from "react-router-dom";
 import "./Shop.css";
 
@@ -14,6 +15,7 @@ export function Shop() {
   const products = useShopProducts();
   const occasions = useOccasions();
   const { isLoggedIn } = useAuth();
+  const { addItem, toggleCart } = useCartStore();
 
   const [shopMode, setShopMode] = useState<"neuf" | "occasion">("neuf");
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
@@ -169,6 +171,25 @@ export function Shop() {
                     <div className="tl-product-price">
                       {prod.price.toFixed(2)} <span>DT</span>
                     </div>
+                    <button 
+                      className="tl-btn-primary" 
+                      style={{ padding: "8px", borderRadius: "8px", minWidth: "40px", display: "flex", justifyContent: "center" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addItem({
+                          id: prod.id,
+                          name: prod.name,
+                          price: prod.price,
+                          quantity: 1,
+                          imageUrl: prod.imageUrl,
+                          isOccasion: false
+                        });
+                        toggleCart();
+                      }}
+                      title="Ajouter au panier"
+                    >
+                      <ShoppingCart size={18} />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -198,16 +219,38 @@ export function Shop() {
                     <div className="tl-product-price">
                       {occ.price.toFixed(2)} <span>DT</span>
                     </div>
-                    <a 
-                      href={`https://wa.me/${occ.whatsappNumber.replace(/[^0-9]/g, "")}`} 
-                      target="_blank" 
-                      rel="noreferrer"
-                      className="tl-btn-cart"
-                      style={{ background: "#25d366", color: "#FFF" }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <MessageCircle size={18} />
-                    </a>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <a 
+                        href={`https://wa.me/${occ.whatsappNumber.replace(/[^0-9]/g, "")}`} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="tl-btn-cart"
+                        style={{ background: "#25d366", color: "#FFF", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px", textDecoration: "none" }}
+                        onClick={(e) => e.stopPropagation()}
+                        title="Contacter par WhatsApp"
+                      >
+                        <MessageCircle size={18} />
+                      </a>
+                      <button 
+                        className="tl-btn-primary" 
+                        style={{ padding: "8px", borderRadius: "8px", minWidth: "40px", display: "flex", justifyContent: "center" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addItem({
+                            id: occ.id,
+                            name: occ.model,
+                            price: occ.price,
+                            quantity: 1,
+                            imageUrl: occ.photos && occ.photos.length > 0 ? occ.photos[0] : undefined,
+                            isOccasion: true
+                          });
+                          toggleCart();
+                        }}
+                        title="Ajouter au panier"
+                      >
+                        <ShoppingCart size={18} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

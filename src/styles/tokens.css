@@ -62,3 +62,27 @@
 [dir="rtl"] {
   --neon-gradient: linear-gradient(225deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
 }
+
+[data-theme="light"] {
+  /* Couleurs de base - Light Mode */
+  --color-primary: #0077E6;
+  --color-primary-dark: #005F99;
+  --color-text: #0F172A;
+  --color-text-secondary: #475569;
+  --color-bg: #F8FAFC;
+  --color-bg-secondary: #F1F5F9;
+  --color-border: #E2E8F0;
+  --color-glass: rgba(255, 255, 255, 0.7);
+
+  /* Adjustments for light mode */
+  --neon-glow: 0 4px 12px rgba(0, 119, 230, 0.15);
+  --neon-glow-strong: 0 8px 24px rgba(0, 119, 230, 0.25);
+  --neon-blob: radial-gradient(
+    circle,
+    rgba(0, 119, 230, 0.05) 0%,
+    rgba(0, 95, 153, 0.02) 50%,
+    transparent 70%
+  );
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 12px 32px rgba(0, 119, 230, 0.1);
+}

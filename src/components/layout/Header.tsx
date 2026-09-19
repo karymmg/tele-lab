@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/services/auth";
-import { LogOut, User, Menu, X } from "lucide-react";
+import { LogOut, User, Menu, X, Sun, Moon, ShoppingCart } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
+import { useCartStore } from "@/services/cartStore";
 import "./Header.css";
 
 export function Header() {
@@ -12,6 +14,8 @@ export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const isArabic = i18n.language === "ar";
+  const { theme, toggleTheme } = useTheme();
+  const { toggleCart, getTotalItems } = useCartStore();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -34,15 +38,36 @@ export function Header() {
     setMobileOpen(false);
   }, [location.pathname, location.hash]);
 
-  const navLinks = [
-    { to: "/", label: t("nav.home") },
-    { to: "/shop", label: isArabic ? "المتجر" : "Boutique" },
-    { to: "/#services", label: t("nav.services") },
-    { to: "/#how-it-works", label: t("nav.howItWorks") },
-    { to: "/#pricing", label: t("nav.pricing") },
-    { to: "/tracking", label: t("nav.track") },
-    { to: "/#contact", label: t("nav.contact") },
-  ];
+  // ── Build navigation links based on role ──
+  const dashboardLink = user?.role === "admin" ? "/dashboard/admin" : "/dashboard/client";
+
+  let navLinks: { to: string; label: string }[];
+
+  if (isLoggedIn && user?.role === "admin") {
+    // Admin: only Boutique + Dashboard
+    navLinks = [
+      { to: "/shop", label: isArabic ? "المتجر" : "Boutique" },
+      { to: dashboardLink, label: "Dashboard" },
+    ];
+  } else if (isLoggedIn) {
+    // Client: Boutique + Demande + Dashboard
+    navLinks = [
+      { to: "/shop", label: isArabic ? "المتجر" : "Boutique" },
+      { to: "/demande", label: isArabic ? "طلب إصلاح" : "Demande de réparation" },
+      { to: dashboardLink, label: "Dashboard" },
+    ];
+  } else {
+    // Guest: full public nav
+    navLinks = [
+      { to: "/", label: t("nav.home") },
+      { to: "/shop", label: isArabic ? "المتجر" : "Boutique" },
+      { to: "/#services", label: t("nav.services") },
+      { to: "/#how-it-works", label: t("nav.howItWorks") },
+      { to: "/#pricing", label: t("nav.pricing") },
+      { to: "/tracking", label: t("nav.track") },
+      { to: "/#contact", label: t("nav.contact") },
+    ];
+  }
 
   return (
     <header className={`tl-header ${scrolled ? "is-scrolled" : ""}`}>
@@ -67,6 +92,35 @@ export function Header() {
 
         {/* Actions */}
         <div className="tl-header__actions">
+          {/* Theme Toggle */}
+          <button
+            className="tl-header__theme-toggle"
+            onClick={toggleTheme}
+            aria-label={theme === "light" ? "Mode Sombre" : "Mode Clair"}
+          >
+            {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+          </button>
+
+          {/* Cart Button */}
+          <button
+            className="tl-header__theme-toggle"
+            onClick={toggleCart}
+            style={{ position: "relative" }}
+            aria-label="Mon Panier"
+          >
+            <ShoppingCart size={16} />
+            {getTotalItems() > 0 && (
+              <span style={{ 
+                position: "absolute", top: -2, right: -4, 
+                background: "#0077E6", color: "#fff", 
+                fontSize: "9px", fontWeight: "bold", 
+                borderRadius: "10px", padding: "2px 5px" 
+              }}>
+                {getTotalItems()}
+              </span>
+            )}
+          </button>
+
           {/* Language Switcher */}
           <div className="tl-header__lang">
             <button
@@ -87,7 +141,7 @@ export function Header() {
           {/* Auth */}
           {isLoggedIn ? (
             <div className="tl-header__user">
-              <Link to="/dashboard/admin" className="tl-header__username">
+              <Link to={dashboardLink} className="tl-header__username">
                 <span className="tl-header__avatar">
                   <User size={14} />
                 </span>
@@ -135,9 +189,18 @@ export function Header() {
 
         <div className="tl-header__mobile-actions">
           {isLoggedIn ? (
-            <Link to="/dashboard/admin" className="tl-header__mobile-link" style={{ color: "#00A3FF" }}>
-              Dashboard Admin
-            </Link>
+            <>
+              <Link to={dashboardLink} className="tl-header__mobile-link" style={{ color: "#00A3FF" }}>
+                Dashboard
+              </Link>
+              <button
+                className="tl-header__mobile-link"
+                onClick={() => { logout(); navigate("/"); }}
+                style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", textAlign: "left", padding: "12px 0", fontSize: "inherit" }}
+              >
+                {isArabic ? "تسجيل الخروج" : "Déconnexion"}
+              </button>
+            </>
           ) : (
             <>
               <Link to="/login" className="tl-header__mobile-link">

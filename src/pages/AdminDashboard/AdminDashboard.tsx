@@ -5,11 +5,14 @@ import { RepairRequest } from "@/types/telelab";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { RepairStatusKey, REPAIR_STATUSES } from "@/utils/status";
 import { useAuth, hasAccount } from "@/services/auth";
-import { Settings, Search, X, Clock, User, Phone, DollarSign, Truck, FileText, Users, Wrench, MessageCircle, Plus, Trash2, Printer, Store, Package } from "lucide-react";
+import { Settings, Search, X, Clock, User, Phone, DollarSign, Truck, FileText, Users, Wrench, MessageCircle, Plus, Trash2, Printer, Store, Package, ShoppingBag, BarChart3, Shield, Eye } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { RepairRequestForm } from "@/components/forms/RepairRequestForm";
 import { useShopCategories, useShopProducts, shopStore } from "@/services/shopStore";
 import { useOccasions, useSiteVisits, occasionStore } from "@/services/occasionStore";
+import { useShopOrders, orderStore } from "@/services/orderStore";
+import { supabase } from "@/services/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import { OccasionProduct } from "@/types/occasion";
 import "./AdminDashboard.css";
 
@@ -19,7 +22,18 @@ const TECH_OPTIONS = [
   "Bilel Mansouri (Spécialiste Logiciel & Déblocage)",
 ];
 
-type TabType = "repairs" | "clients" | "drivers" | "shop" | "occasions";
+type TabType = "stats" | "repairs" | "orders" | "users" | "drivers" | "shop" | "occasions";
+
+interface ProfileUser {
+  id: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  email: string | null;
+  auth_email: string | null;
+  role: string;
+  created_at: string;
+}
 
 export function AdminDashboard() {
   const { t, i18n } = useTranslation();
@@ -28,7 +42,7 @@ export function AdminDashboard() {
   const drivers = useDrivers();
   const isArabic = i18n.language === "ar";
 
-  const [activeTab, setActiveTab] = useState<TabType>("repairs");
+  const [activeTab, setActiveTab] = useState<TabType>("stats");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [selectedReq, setSelectedReq] = useState<RepairRequest | null>(null);
@@ -47,7 +61,99 @@ export function AdminDashboard() {
   const products = useShopProducts();
   const occasions = useOccasions();
   const siteVisits = useSiteVisits();
+  const shopOrders = useShopOrders();
   const [shopView, setShopView] = useState<"products" | "categories">("products");
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [profileUsers, setProfileUsers] = useState<ProfileUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [isSubmittingUser, setIsSubmittingUser] = useState(false);
+  const [newUser, setNewUser] = useState({ firstName: "", lastName: "", email: "", phone: "", password: "", role: "customer" });
+
+  React.useEffect(() => {
+    async function fetchUsers() {
+      setUsersLoading(true);
+      const { data, count } = await supabase.from("profiles").select("*", { count: "exact" });
+      if (count !== null) setTotalUsers(count);
+      if (data) setProfileUsers(data as ProfileUser[]);
+      setUsersLoading(false);
+    }
+    fetchUsers();
+  }, []);
+
+  async function handleRoleChange(userId: string, newRole: string) {
+    const { error } = await supabase.from("profiles").update({ role: newRole }).eq("id", userId);
+    if (error) {
+      alert("Erreur lors de la mise à jour du rôle : " + error.message);
+    } else {
+      setProfileUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    }
+  }
+
+  async function handleDeleteUser(userId: string) {
+    if (!confirm("Voulez-vous vraiment supprimer cet utilisateur ? (Attention : cette action est irréversible)")) return;
+    const { error } = await supabase.from("profiles").delete().eq("id", userId);
+    if (error) {
+      alert("Erreur lors de la suppression : " + error.message);
+    } else {
+      setProfileUsers(prev => prev.filter(u => u.id !== userId));
+      setTotalUsers(prev => prev - 1);
+    }
+  }
+
+  async function handleCreateUser(e: React.FormEvent) {
+    e.preventDefault();
+    setIsSubmittingUser(true);
+    try {
+      const supabaseAdmin = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY,
+        {
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+          }
+        }
+      );
+      
+      const { data, error } = await supabaseAdmin.auth.signUp({
+        email: newUser.email,
+        password: newUser.password,
+      });
+      
+      if (error) throw error;
+      if (data.user) {
+        const { error: profileError } = await supabase.from("profiles").insert({
+          id: data.user.id,
+          first_name: newUser.firstName,
+          last_name: newUser.lastName,
+          phone: newUser.phone,
+          email: newUser.email,
+          auth_email: newUser.email,
+          role: newUser.role,
+        });
+        if (profileError) throw profileError;
+        
+        setProfileUsers(prev => [{
+          id: data.user.id,
+          first_name: newUser.firstName,
+          last_name: newUser.lastName,
+          phone: newUser.phone,
+          email: newUser.email,
+          auth_email: newUser.email,
+          role: newUser.role,
+          created_at: new Date().toISOString()
+        }, ...prev]);
+        setTotalUsers(prev => prev + 1);
+        setIsAddingUser(false);
+        setNewUser({ firstName: "", lastName: "", email: "", phone: "", password: "", role: "customer" });
+      }
+    } catch (err: any) {
+      alert("Erreur lors de la création : " + err.message);
+    } finally {
+      setIsSubmittingUser(false);
+    }
+  }
   
   // Category Form
   const [newCatName, setNewCatName] = useState("");
@@ -317,16 +423,13 @@ export function AdminDashboard() {
             <p>{isArabic ? `متصل بـ: ${user?.displayName || "Admin"}` : `Connecté : ${user?.displayName || "Admin"}`}</p>
           </div>
           
-          <div className="tl-kpi-card" style={{ padding: "12px 24px", minWidth: 200, display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <span style={{ color: "#A7B0B8", fontSize: 12, textTransform: "uppercase", letterSpacing: 1 }}>
-              {isArabic ? "إجمالي زوار الموقع" : "Visiteurs du site"}
-            </span>
-            <span style={{ color: "#FFF", fontSize: 28, fontWeight: 700, marginTop: 4 }}>
-              {siteVisits}
-            </span>
-          </div>
-          
           <div className="tl-admin-tabs">
+            <button 
+              className={`tl-tab-btn ${activeTab === "stats" ? "is-active" : ""}`}
+              onClick={() => { setActiveTab("stats"); setSearch(""); }}
+            >
+              <BarChart3 size={16} /> {isArabic ? "الإحصائيات" : "Statistiques"}
+            </button>
             <button 
               className={`tl-tab-btn ${activeTab === "repairs" ? "is-active" : ""}`}
               onClick={() => { setActiveTab("repairs"); setSearch(""); }}
@@ -334,10 +437,16 @@ export function AdminDashboard() {
               <Wrench size={16} /> {isArabic ? "الطلبات" : "Réparations"}
             </button>
             <button 
-              className={`tl-tab-btn ${activeTab === "clients" ? "is-active" : ""}`}
-              onClick={() => { setActiveTab("clients"); setSearch(""); }}
+              className={`tl-tab-btn ${activeTab === "orders" ? "is-active" : ""}`}
+              onClick={() => { setActiveTab("orders"); setSearch(""); }}
             >
-              <Users size={16} /> {isArabic ? "العملاء" : "Clients"}
+              <ShoppingBag size={16} /> {isArabic ? "طلبات المتجر" : "Commandes"}
+            </button>
+            <button 
+              className={`tl-tab-btn ${activeTab === "users" ? "is-active" : ""}`}
+              onClick={() => { setActiveTab("users"); setSearch(""); }}
+            >
+              <Users size={16} /> {isArabic ? "المستخدمين" : "Utilisateurs"}
             </button>
             <button 
               className={`tl-tab-btn ${activeTab === "drivers" ? "is-active" : ""}`}
@@ -360,13 +469,76 @@ export function AdminDashboard() {
           </div>
         </div>
 
-        {/* ── TAB CONTENT: REPAIRS ───────────────────────────────────────── */}
-        {activeTab === "repairs" && (
+        {/* ── TAB CONTENT: STATISTIQUES ───────────────────────────────────────── */}
+        {activeTab === "stats" && (
           <div className="tl-tab-content fade-in">
-            <div className="tl-charts-grid">
+            {/* KPI Cards */}
+            <div className="tl-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20, marginBottom: 32 }}>
+              <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
+                <div style={{ background: "rgba(0,140,255,0.15)", color: "#00A3FF", padding: 16, borderRadius: 16 }}>
+                  <Users size={28} />
+                </div>
+                <div>
+                  <div style={{ color: "var(--color-text-secondary)", fontSize: 13, fontWeight: 600, textTransform: "uppercase" }}>{isArabic ? "إجمالي المستخدمين" : "Total Utilisateurs"}</div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "var(--color-text)", marginTop: 4 }}>{totalUsers}</div>
+                </div>
+              </div>
               
+              <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
+                <div style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", padding: 16, borderRadius: 16 }}>
+                  <ShoppingBag size={28} />
+                </div>
+                <div>
+                  <div style={{ color: "var(--color-text-secondary)", fontSize: 13, fontWeight: 600, textTransform: "uppercase" }}>{isArabic ? "طلبات المتجر" : "Commandes Boutique"}</div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "var(--color-text)", marginTop: 4 }}>{shopOrders.length}</div>
+                </div>
+              </div>
+
+              <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
+                <div style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", padding: 16, borderRadius: 16 }}>
+                  <Wrench size={28} />
+                </div>
+                <div>
+                  <div style={{ color: "var(--color-text-secondary)", fontSize: 13, fontWeight: 600, textTransform: "uppercase" }}>{isArabic ? "إجمالي الإصلاحات" : "Total Réparations"}</div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "var(--color-text)", marginTop: 4 }}>{requests.length}</div>
+                </div>
+              </div>
+
+              <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
+                <div style={{ background: "rgba(139,92,246,0.15)", color: "#8b5cf6", padding: 16, borderRadius: 16 }}>
+                  <DollarSign size={28} />
+                </div>
+                <div>
+                  <div style={{ color: "var(--color-text-secondary)", fontSize: 13, fontWeight: 600, textTransform: "uppercase" }}>{isArabic ? "إجمالي الإيرادات" : "Chiffre d'affaires"}</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: "var(--color-text)", marginTop: 4 }}>{totalRevenue.toFixed(0)} <span style={{ fontSize: 16, color: "var(--color-text-secondary)" }}>DT</span></div>
+                </div>
+              </div>
+
+              <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
+                <div style={{ background: "rgba(236,72,153,0.15)", color: "#ec4899", padding: 16, borderRadius: 16 }}>
+                  <Eye size={28} />
+                </div>
+                <div>
+                  <div style={{ color: "var(--color-text-secondary)", fontSize: 13, fontWeight: 600, textTransform: "uppercase" }}>{isArabic ? "زوار الموقع" : "Visiteurs du site"}</div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "var(--color-text)", marginTop: 4 }}>{siteVisits}</div>
+                </div>
+              </div>
+
+              <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
+                <div style={{ background: "rgba(6,182,212,0.15)", color: "#06b6d4", padding: 16, borderRadius: 16 }}>
+                  <Package size={28} />
+                </div>
+                <div>
+                  <div style={{ color: "var(--color-text-secondary)", fontSize: 13, fontWeight: 600, textTransform: "uppercase" }}>{isArabic ? "منتجات المستعمل" : "Annonces Occasions"}</div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "var(--color-text)", marginTop: 4 }}>{occasions.length}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Charts */}
+            <div className="tl-charts-grid">
               <div className="tl-kpi-card tl-chart-card">
-                <h4 style={{ color: "#F5F7FA", fontSize: 16, marginBottom: 20 }}>
+                <h4 style={{ color: "var(--color-text)", fontSize: 16, marginBottom: 20 }}>
                   {isArabic ? "توزيع الطلبات" : "Répartition des Demandes"}
                 </h4>
                 <div style={{ width: "100%", height: 220 }}>
@@ -376,15 +548,15 @@ export function AdminDashboard() {
                         {pieData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
                       </Pie>
                       <RechartsTooltip 
-                        contentStyle={{ background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#F5F7FA" }}
-                        itemStyle={{ color: "#F5F7FA" }}
+                        contentStyle={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
+                        itemStyle={{ color: "var(--color-text)" }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center", marginTop: 10 }}>
                   {pieData.map(d => (
-                    <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#A7B0B8" }}>
+                    <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--color-text-secondary)" }}>
                       <span style={{ width: 10, height: 10, borderRadius: "50%", background: d.color }}></span>
                       {d.name} ({d.value})
                     </div>
@@ -393,18 +565,18 @@ export function AdminDashboard() {
               </div>
 
               <div className="tl-kpi-card tl-chart-card">
-                <h4 style={{ color: "#F5F7FA", fontSize: 16, marginBottom: 20 }}>
+                <h4 style={{ color: "var(--color-text)", fontSize: 16, marginBottom: 20 }}>
                   {isArabic ? "الإيرادات المالية" : "Bilan Financier (DT)"}
                 </h4>
                 <div style={{ width: "100%", height: 220 }}>
                   <ResponsiveContainer>
                     <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#123044" vertical={false} />
-                      <XAxis dataKey="name" stroke="#A7B0B8" fontSize={12} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#A7B0B8" fontSize={12} tickLine={false} axisLine={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                      <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="var(--color-text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
                       <RechartsTooltip 
                         cursor={{ fill: "rgba(0,140,255,0.05)" }}
-                        contentStyle={{ background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#F5F7FA" }}
+                        contentStyle={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
                       />
                       <Bar dataKey="montant" radius={[6, 6, 0, 0]} maxBarSize={50}>
                         {barData.map((entry, index) => <Cell key={index} fill={entry.fill} />)}
@@ -413,12 +585,17 @@ export function AdminDashboard() {
                   </ResponsiveContainer>
                 </div>
               </div>
-
             </div>
+          </div>
+        )}
+
+        {/* ── TAB CONTENT: REPAIRS ───────────────────────────────────────── */}
+        {activeTab === "repairs" && (
+          <div className="tl-tab-content fade-in">
 
             <div className="tl-admin-toolbar">
               <div className="tl-admin-search">
-                <Search size={18} color="#A7B0B8" style={{ alignSelf: "center", position: "absolute", marginLeft: 12 }} />
+                <Search size={18} color="var(--color-text-secondary)" style={{ alignSelf: "center", position: "absolute", marginLeft: 12 }} />
                 <input
                   type="text"
                   placeholder={isArabic ? "بحث برقم التتبع، العميل، الهاتف، الجهاز..." : "Rechercher (réf, nom, tél, modèle)..."}
@@ -466,7 +643,7 @@ export function AdminDashboard() {
                     {filteredRequests.map((req) => (
                       <tr key={req.id}>
                         <td data-label="Réf." className="tl-td-tracking">{req.trackingNumber}</td>
-                        <td data-label="Date" style={{ fontSize: "12px", color: "#A7B0B8" }}>
+                        <td data-label="Date" style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
                           {new Date(req.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
                         </td>
                         <td data-label="Client">
@@ -488,7 +665,7 @@ export function AdminDashboard() {
                           <div style={{ fontWeight: 600 }}>
                             {req.brand} {req.model}
                           </div>
-                          <div style={{ fontSize: "12px", color: "#A7B0B8" }}>{req.problem}</div>
+                          <div style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>{req.problem}</div>
                         </td>
                         <td data-label="Statut">
                           <StatusBadge status={req.status} />
@@ -497,7 +674,7 @@ export function AdminDashboard() {
                           {req.price ? (
                             <div>
                               <strong style={{ color: "#00A3FF" }}>{req.price} DT</strong>
-                              <div style={{ fontSize: "11px", color: "#A7B0B8" }}>
+                              <div style={{ fontSize: "11px", color: "var(--color-text-secondary)" }}>
                                 {req.depositAmount} / {req.remainingAmount}
                               </div>
                             </div>
@@ -507,7 +684,7 @@ export function AdminDashboard() {
                             </span>
                           )}
                         </td>
-                        <td data-label="Équipe" style={{ fontSize: "12px", color: "#A7B0B8" }}>
+                        <td data-label="Équipe" style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
                           {req.driverName ? <div>🚚 {req.driverName.split(" (")[0]}</div> : null}
                           {req.technicianName ? <div>🔧 {req.technicianName.split(" (")[0]}</div> : null}
                           {!req.driverName && !req.technicianName && <span>—</span>}
@@ -521,7 +698,7 @@ export function AdminDashboard() {
                     ))}
                     {filteredRequests.length === 0 && (
                       <tr>
-                        <td colSpan={8} style={{ textAlign: "center", padding: "40px", color: "#A7B0B8" }}>
+                        <td colSpan={8} style={{ textAlign: "center", padding: "40px", color: "var(--color-text-secondary)" }}>
                           Aucune demande trouvée.
                         </td>
                       </tr>
@@ -533,15 +710,15 @@ export function AdminDashboard() {
           </div>
         )}
 
-        {/* ── TAB CONTENT: CLIENTS ───────────────────────────────────────── */}
-        {activeTab === "clients" && (
+        {/* ── TAB CONTENT: ORDERS ───────────────────────────────────────── */}
+        {activeTab === "orders" && (
           <div className="tl-tab-content fade-in">
             <div className="tl-admin-toolbar">
               <div className="tl-admin-search">
-                <Search size={18} color="#A7B0B8" style={{ alignSelf: "center", position: "absolute", marginLeft: 12 }} />
+                <Search size={18} color="var(--color-text-secondary)" style={{ alignSelf: "center", position: "absolute", marginLeft: 12 }} />
                 <input
                   type="text"
-                  placeholder={isArabic ? "بحث بالاسم أو رقم الهاتف..." : "Rechercher un client (nom, tél)..."}
+                  placeholder={isArabic ? "بحث برقم الطلب أو العميل..." : "Rechercher (réf commande, client)..."}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   style={{ paddingLeft: 40 }}
@@ -554,58 +731,76 @@ export function AdminDashboard() {
                 <table className="tl-admin-table">
                   <thead>
                     <tr>
-                      <th>Client</th>
-                      <th>Téléphone</th>
-                      <th>Email</th>
-                      <th>Réparations</th>
-                      <th>Total Dépensé</th>
-                      <th>Contact</th>
+                      <th>{isArabic ? "رقم الطلب" : "N° Commande"}</th>
+                      <th>{isArabic ? "التاريخ" : "Date"}</th>
+                      <th>{isArabic ? "العميل" : "Client"}</th>
+                      <th>{isArabic ? "العنوان" : "Adresse"}</th>
+                      <th>{isArabic ? "المنتجات" : "Produits"}</th>
+                      <th>{isArabic ? "السعر" : "Total"}</th>
+                      <th>{isArabic ? "الحالة" : "Statut"}</th>
+                      <th>{isArabic ? "إجراء" : "Action"}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {clientsList.map((client, idx) => (
-                      <tr key={idx}>
-                        <td>
-                          <div className="tl-td-client">
-                            {client.firstName} {client.lastName}
+                    {shopOrders.filter(o => o.orderNumber.includes(search) || o.customerName.toLowerCase().includes(search.toLowerCase()) || o.customerPhone.includes(search)).map((order) => (
+                      <tr key={order.id}>
+                        <td data-label="N° Commande" style={{ fontWeight: 600, color: "#10b981" }}>{order.orderNumber}</td>
+                        <td data-label="Date" style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+                          {new Date(order.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </td>
+                        <td data-label="Client">
+                          <div style={{ fontWeight: 600 }}>{order.customerName}</div>
+                          <div style={{ fontSize: "12px" }}>
+                            <a href={`tel:${order.customerPhone}`} style={{ color: "#00A3FF" }}>{order.customerPhone}</a>
                           </div>
-                          {hasAccount(client.phone.replace(/[\s\-\+]/g, "")) ? (
-                            <span style={{ fontSize: "10px", color: "#10b981", background: "rgba(16,185,129,0.1)", padding: "2px 6px", borderRadius: 4 }}>A un compte</span>
-                          ) : (
-                            <span style={{ fontSize: "10px", color: "#f59e0b", background: "rgba(245,158,11,0.1)", padding: "2px 6px", borderRadius: 4 }}>Pas de compte</span>
-                          )}
                         </td>
-                        <td className="tl-td-client-phone">
-                          <a href={`tel:${client.phone}`}>{client.phone}</a>
+                        <td data-label="Adresse" style={{ fontSize: "12px" }}>
+                          {order.customerAddress}, {order.customerCity} ({order.customerGovernorate})
                         </td>
-                        <td style={{ color: "#A7B0B8", fontSize: "13px" }}>
-                          {client.email || "—"}
+                        <td data-label="Produits" style={{ fontSize: "12px", maxWidth: 200, whiteSpace: "normal" }}>
+                          {order.items.map(item => `${item.quantity}x ${item.name}`).join(", ")}
                         </td>
-                        <td>
-                          <span style={{ background: "rgba(0,140,255,0.1)", color: "#00A3FF", padding: "4px 8px", borderRadius: 4, fontWeight: 700, fontSize: 13 }}>
-                            {client.repairCount} dossier(s)
-                          </span>
+                        <td data-label="Total">
+                          <strong style={{ color: "#00A3FF" }}>{order.totalAmount.toFixed(2)} DT</strong>
                         </td>
-                        <td>
-                          <strong style={{ color: "#10b981" }}>{client.spent} DT</strong>
-                        </td>
-                        <td>
-                          <a
-                            href={`https://wa.me/${client.phone.replace(/[^0-9]/g, "")}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="tl-btn-manage"
-                            style={{ display: "inline-flex", color: "#25d366", borderColor: "rgba(37, 211, 102, 0.3)" }}
+                        <td data-label="Statut">
+                          <select 
+                            value={order.status}
+                            onChange={(e) => orderStore.updateStatus(order.id, e.target.value as any)}
+                            style={{ 
+                              padding: "4px 8px", 
+                              fontSize: 12, 
+                              borderRadius: 4, 
+                              background: order.status === 'delivered' ? "rgba(16,185,129,0.1)" : "var(--color-bg)", 
+                              border: "1px solid var(--color-border)", 
+                              color: order.status === 'delivered' ? "#10b981" : "var(--color-text-secondary)",
+                              fontWeight: order.status === 'delivered' ? 600 : 400
+                            }}
                           >
-                            <MessageCircle size={14} /> WhatsApp
-                          </a>
+                            <option value="pending">En attente</option>
+                            <option value="confirmed">Confirmée</option>
+                            <option value="shipped">Expédiée</option>
+                            <option value="delivered">Livrée</option>
+                            <option value="cancelled">Annulée</option>
+                          </select>
+                        </td>
+                        <td data-label="Action">
+                          <button 
+                            className="tl-btn-manage" 
+                            style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} 
+                            onClick={() => {
+                              if (confirm("Supprimer cette commande définitivement ?")) orderStore.deleteOrder(order.id);
+                            }}
+                          >
+                            <Trash2 size={14} /> Supprimer
+                          </button>
                         </td>
                       </tr>
                     ))}
-                    {clientsList.length === 0 && (
+                    {shopOrders.length === 0 && (
                       <tr>
-                        <td colSpan={6} style={{ textAlign: "center", padding: "40px", color: "#A7B0B8" }}>
-                          Aucun client trouvé.
+                        <td colSpan={8} style={{ textAlign: "center", padding: "40px", color: "var(--color-text-secondary)" }}>
+                          Aucune commande trouvée.
                         </td>
                       </tr>
                     )}
@@ -616,6 +811,197 @@ export function AdminDashboard() {
           </div>
         )}
 
+        {/* ── TAB CONTENT: UTILISATEURS ───────────────────────────────────────── */}
+        {activeTab === "users" && (
+          <div className="tl-tab-content fade-in">
+            <div className="tl-admin-toolbar">
+              <div className="tl-admin-search">
+                <Search size={18} color="var(--color-text-secondary)" style={{ alignSelf: "center", position: "absolute", marginLeft: 12 }} />
+                <input
+                  type="text"
+                  placeholder={isArabic ? "بحث بالاسم، الهاتف أو البريد..." : "Rechercher (nom, tél, email)..."}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{ paddingLeft: 40 }}
+                />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>
+                  {isArabic ? `${profileUsers.length} مستخدم مسجل` : `${profileUsers.length} utilisateur(s) inscrit(s)`}
+                </span>
+                <button 
+                  className="tl-btn-manage" 
+                  style={{ height: 40, background: "rgba(0,140,255,0.1)", color: "#00A3FF", borderColor: "rgba(0,140,255,0.3)" }}
+                  onClick={() => setIsAddingUser(true)}
+                >
+                  <Plus size={16} /> {isArabic ? "إضافة مستخدم" : "Ajouter un utilisateur"}
+                </button>
+              </div>
+            </div>
+
+            {usersLoading ? (
+              <div style={{ textAlign: "center", padding: 60, color: "var(--color-text-secondary)" }}>
+                {isArabic ? "جاري التحميل..." : "Chargement des utilisateurs..."}
+              </div>
+            ) : (
+              <div className="tl-admin-table-card">
+                <div className="tl-table-wrapper">
+                  <table className="tl-admin-table">
+                    <thead>
+                      <tr>
+                        <th>{isArabic ? "المستخدم" : "Utilisateur"}</th>
+                        <th>{isArabic ? "الهاتف" : "Téléphone"}</th>
+                        <th>{isArabic ? "البريد" : "Email"}</th>
+                        <th>{isArabic ? "الدور" : "Rôle"}</th>
+                        <th>{isArabic ? "تاريخ التسجيل" : "Inscrit le"}</th>
+                        <th>{isArabic ? "إجراء" : "Contact"}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {profileUsers
+                        .filter(u => 
+                          `${u.first_name} ${u.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
+                          u.phone.includes(search) ||
+                          (u.email || "").toLowerCase().includes(search.toLowerCase()) ||
+                          (u.auth_email || "").toLowerCase().includes(search.toLowerCase())
+                        )
+                        .map((u) => {
+                          const roleColors: Record<string, { bg: string; color: string; label: string }> = {
+                            admin: { bg: "rgba(239,68,68,0.1)", color: "#ef4444", label: "Admin" },
+                            customer: { bg: "rgba(16,185,129,0.1)", color: "#10b981", label: "Client" },
+                            technician: { bg: "rgba(0,140,255,0.1)", color: "#00A3FF", label: "Technicien" },
+                            driver: { bg: "rgba(139,92,246,0.1)", color: "#8b5cf6", label: "Livreur" },
+                          };
+                          const rc = roleColors[u.role] || roleColors.customer;
+                          return (
+                            <tr key={u.id}>
+                              <td>
+                                <div className="tl-td-client" style={{ fontWeight: 600 }}>
+                                  {u.first_name} {u.last_name}
+                                </div>
+                              </td>
+                              <td className="tl-td-client-phone">
+                                <a href={`tel:${u.phone}`}>{u.phone}</a>
+                              </td>
+                              <td style={{ color: "var(--color-text-secondary)", fontSize: "13px" }}>
+                                {u.auth_email || u.email || "—"}
+                              </td>
+                              <td>
+                                <select
+                                  value={u.role}
+                                  onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                                  style={{
+                                    padding: "6px 12px",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    borderRadius: 6,
+                                    background: rc.bg,
+                                    border: `1px solid ${rc.color}33`,
+                                    color: rc.color,
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  <option value="customer">Client</option>
+                                  <option value="admin">Admin</option>
+                                  <option value="technician">Technicien</option>
+                                  <option value="driver">Livreur</option>
+                                </select>
+                              </td>
+                              <td style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+                                {new Date(u.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
+                              </td>
+                              <td>
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  <a
+                                    href={`https://wa.me/${u.phone.replace(/[^0-9]/g, "")}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="tl-btn-manage"
+                                    style={{ display: "inline-flex", color: "#25d366", borderColor: "rgba(37, 211, 102, 0.3)" }}
+                                  >
+                                    <MessageCircle size={14} /> WhatsApp
+                                  </a>
+                                  <button
+                                    onClick={() => handleDeleteUser(u.id)}
+                                    className="tl-btn-manage"
+                                    style={{ display: "inline-flex", color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }}
+                                    title="Supprimer l'utilisateur"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      {profileUsers.length === 0 && !usersLoading && (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign: "center", padding: "40px", color: "var(--color-text-secondary)" }}>
+                            {isArabic ? "لا يوجد مستخدمين مسجلين." : "Aucun utilisateur inscrit."}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Add User */}
+            {isAddingUser && (
+              <div className="tl-modal-overlay">
+                <div className="tl-modal-content">
+                  <div className="tl-modal-header">
+                    <h2>{isArabic ? "إضافة مستخدم جديد" : "Ajouter un nouvel utilisateur"}</h2>
+                    <button onClick={() => setIsAddingUser(false)} className="tl-btn-icon"><X size={24} /></button>
+                  </div>
+                  <div className="tl-modal-body">
+                    <form onSubmit={handleCreateUser} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      <div style={{ display: "flex", gap: 16 }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ display: "block", marginBottom: 6, fontSize: 13, color: "var(--color-text-secondary)" }}>Prénom</label>
+                          <input type="text" required value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-bg)", color: "var(--color-text)" }} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ display: "block", marginBottom: 6, fontSize: 13, color: "var(--color-text-secondary)" }}>Nom</label>
+                          <input type="text" required value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-bg)", color: "var(--color-text)" }} />
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 16 }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ display: "block", marginBottom: 6, fontSize: 13, color: "var(--color-text-secondary)" }}>Téléphone</label>
+                          <input type="text" required value={newUser.phone} onChange={e => setNewUser({...newUser, phone: e.target.value})} style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-bg)", color: "var(--color-text)" }} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ display: "block", marginBottom: 6, fontSize: 13, color: "var(--color-text-secondary)" }}>Rôle</label>
+                          <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-bg)", color: "var(--color-text)" }}>
+                            <option value="customer">Client</option>
+                            <option value="admin">Admin</option>
+                            <option value="technician">Technicien</option>
+                            <option value="driver">Livreur</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ display: "block", marginBottom: 6, fontSize: 13, color: "var(--color-text-secondary)" }}>Email (pour la connexion)</label>
+                        <input type="email" required value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-bg)", color: "var(--color-text)" }} />
+                      </div>
+                      <div>
+                        <label style={{ display: "block", marginBottom: 6, fontSize: 13, color: "var(--color-text-secondary)" }}>Mot de passe</label>
+                        <input type="password" required minLength={6} value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid var(--color-border)", background: "var(--color-bg)", color: "var(--color-text)" }} />
+                      </div>
+                      
+                      <button type="submit" className="tl-btn-primary" disabled={isSubmittingUser} style={{ marginTop: 10, width: "100%" }}>
+                        {isSubmittingUser ? "Création en cours..." : "Créer l'utilisateur"}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── TAB CONTENT: DRIVERS ───────────────────────────────────────── */}
         {activeTab === "drivers" && (
           <div className="tl-tab-content fade-in">
@@ -623,35 +1009,35 @@ export function AdminDashboard() {
             <div className="tl-admin-toolbar" style={{ alignItems: "flex-end" }}>
               <form onSubmit={handleAddDriver} style={{ display: "flex", gap: 16, flexWrap: "wrap", width: "100%" }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Nom complet</label>
+                  <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Nom complet</label>
                   <input
                     type="text"
                     required
                     placeholder="Ex: Sami Livreur"
                     value={newDriverName}
                     onChange={e => setNewDriverName(e.target.value)}
-                    style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                    style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Téléphone</label>
+                  <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Téléphone</label>
                   <input
                     type="text"
                     required
                     placeholder="Ex: 55 123 456"
                     value={newDriverPhone}
                     onChange={e => setNewDriverPhone(e.target.value)}
-                    style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                    style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Zone / Région</label>
+                  <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Zone / Région</label>
                   <input
                     type="text"
                     placeholder="Ex: Tunis / Ariana"
                     value={newDriverZone}
                     onChange={e => setNewDriverZone(e.target.value)}
-                    style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                    style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
                   />
                 </div>
                 <div>
@@ -695,7 +1081,7 @@ export function AdminDashboard() {
                 </div>
               ))}
               {driversStats.length === 0 && (
-                 <div style={{ color: "#A7B0B8", gridColumn: "1 / -1", textAlign: "center", padding: 40 }}>
+                 <div style={{ color: "var(--color-text-secondary)", gridColumn: "1 / -1", textAlign: "center", padding: 40 }}>
                    Aucun livreur configuré. Ajoutez-en un ci-dessus.
                  </div>
               )}
@@ -729,24 +1115,24 @@ export function AdminDashboard() {
                 <div className="tl-admin-toolbar" style={{ alignItems: "flex-end", marginTop: 24 }}>
                   <form onSubmit={handleAddCategory} style={{ display: "flex", gap: 16, flexWrap: "wrap", width: "100%" }}>
                     <div style={{ flex: 1, minWidth: 200 }}>
-                      <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Nom de la catégorie</label>
+                      <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Nom de la catégorie</label>
                       <input
                         type="text"
                         required
                         placeholder="Ex: Chargeurs"
                         value={newCatName}
                         onChange={e => setNewCatName(e.target.value)}
-                        style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                        style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
                       />
                     </div>
                     <div style={{ flex: 1, minWidth: 200 }}>
-                      <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Nom d'icône (Optionnel)</label>
+                      <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Nom d'icône (Optionnel)</label>
                       <input
                         type="text"
                         placeholder="Ex: BatteryCharging"
                         value={newCatIcon}
                         onChange={e => setNewCatIcon(e.target.value)}
-                        style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                        style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
                       />
                     </div>
                     <div>
@@ -770,7 +1156,7 @@ export function AdminDashboard() {
                       {categories.map(cat => (
                         <tr key={cat.id}>
                           <td style={{ fontWeight: 600 }}>{cat.name}</td>
-                          <td style={{ color: "#A7B0B8" }}>{cat.icon || "—"}</td>
+                          <td style={{ color: "var(--color-text-secondary)" }}>{cat.icon || "—"}</td>
                           <td>
                             <button className="tl-btn-manage" style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteCategory(cat.id)}>
                               <Trash2 size={14} /> Supprimer
@@ -779,7 +1165,7 @@ export function AdminDashboard() {
                         </tr>
                       ))}
                       {categories.length === 0 && (
-                        <tr><td colSpan={3} style={{ textAlign: "center", padding: 20, color: "#A7B0B8" }}>Aucune catégorie.</td></tr>
+                        <tr><td colSpan={3} style={{ textAlign: "center", padding: 20, color: "var(--color-text-secondary)" }}>Aucune catégorie.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -792,18 +1178,18 @@ export function AdminDashboard() {
                 <div className="tl-admin-toolbar" style={{ alignItems: "flex-end", marginTop: 24 }}>
                   <form onSubmit={handleAddProduct} style={{ display: "flex", gap: 16, flexWrap: "wrap", width: "100%" }}>
                     <div style={{ flex: 1, minWidth: 200 }}>
-                      <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Nom du produit</label>
+                      <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Nom du produit</label>
                       <input
                         type="text"
                         required
                         placeholder="Ex: Câble iPhone Rapide"
                         value={newProdName}
                         onChange={e => setNewProdName(e.target.value)}
-                        style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                        style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
                       />
                     </div>
                     <div style={{ flex: 1, minWidth: 150 }}>
-                      <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Prix (DT)</label>
+                      <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Prix (DT)</label>
                       <input
                         type="number"
                         step="0.1"
@@ -811,21 +1197,21 @@ export function AdminDashboard() {
                         placeholder="0.00"
                         value={newProdPrice}
                         onChange={e => setNewProdPrice(e.target.value)}
-                        style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                        style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
                       />
                     </div>
                     <div style={{ flex: 1, minWidth: 100 }}>
-                      <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Stock</label>
+                      <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Stock</label>
                       <input
                         type="number"
                         placeholder="0"
                         value={newProdStock}
                         onChange={e => setNewProdStock(e.target.value)}
-                        style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                        style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
                       />
                     </div>
                     <div style={{ flex: 1, minWidth: 200 }}>
-                      <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Catégorie</label>
+                      <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Catégorie</label>
                       <select
                         required
                         value={newProdCat}
@@ -837,13 +1223,13 @@ export function AdminDashboard() {
                       </select>
                     </div>
                     <div style={{ flex: 2, minWidth: 300 }}>
-                      <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>Image URL</label>
+                      <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Image URL</label>
                       <input
                         type="text"
                         placeholder="https://..."
                         value={newProdImg}
                         onChange={e => setNewProdImg(e.target.value)}
-                        style={{ width: "100%", padding: "10px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                        style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
                       />
                     </div>
                     <div>
@@ -876,11 +1262,11 @@ export function AdminDashboard() {
                               {prod.imageUrl ? (
                                 <img src={prod.imageUrl} alt={prod.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6 }} />
                               ) : (
-                                <div style={{ width: 40, height: 40, background: "#123044", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={16} color="#A7B0B8" /></div>
+                                <div style={{ width: 40, height: 40, background: "var(--color-border)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={16} color="var(--color-text-secondary)" /></div>
                               )}
                             </td>
                             <td style={{ fontWeight: 600 }}>{prod.name}</td>
-                            <td style={{ color: "#A7B0B8", fontSize: 12 }}>{cat?.name || "—"}</td>
+                            <td style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>{cat?.name || "—"}</td>
                             <td><strong style={{ color: "#10b981" }}>{prod.price} DT</strong></td>
                             <td>{prod.stock > 0 ? prod.stock : <span style={{ color: "#ef4444" }}>Rupture</span>}</td>
                             <td>{prod.views || 0}</td>
@@ -893,7 +1279,7 @@ export function AdminDashboard() {
                         );
                       })}
                       {products.length === 0 && (
-                        <tr><td colSpan={7} style={{ textAlign: "center", padding: 20, color: "#A7B0B8" }}>Aucun produit.</td></tr>
+                        <tr><td colSpan={7} style={{ textAlign: "center", padding: 20, color: "var(--color-text-secondary)" }}>Aucun produit.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -907,7 +1293,7 @@ export function AdminDashboard() {
         {activeTab === "occasions" && (
           <div className="tl-tab-content fade-in">
             <div className="tl-admin-toolbar" style={{ justifyContent: "flex-end", marginBottom: 16 }}>
-              <div style={{ color: "#A7B0B8", fontSize: 14 }}>
+              <div style={{ color: "var(--color-text-secondary)", fontSize: 14 }}>
                 {isArabic ? "مجموع الإعلانات :" : "Total Annonces :"} <strong>{occasions.length}</strong>
               </div>
             </div>
@@ -932,12 +1318,12 @@ export function AdminDashboard() {
                         {occ.photos && occ.photos.length > 0 ? (
                           <img src={occ.photos[0]} alt={occ.model} style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 6 }} />
                         ) : (
-                          <div style={{ width: 50, height: 50, background: "#123044", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={20} color="#A7B0B8" /></div>
+                          <div style={{ width: 50, height: 50, background: "var(--color-border)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={20} color="var(--color-text-secondary)" /></div>
                         )}
                       </td>
                       <td>
                         <div style={{ fontWeight: 600 }}>{occ.model}</div>
-                        <div style={{ color: "#A7B0B8", fontSize: 12 }}>{occ.type} • {occ.brand}</div>
+                        <div style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>{occ.type} • {occ.brand}</div>
                         <div style={{ color: "#00A3FF", fontSize: 12, marginTop: 4 }}>État: {occ.condition}</div>
                       </td>
                       <td>
@@ -951,7 +1337,7 @@ export function AdminDashboard() {
                         <select 
                           value={occ.status} 
                           onChange={(e) => occasionStore.updateOccasionStatus(occ.id, e.target.value as any)}
-                          style={{ padding: "4px 8px", fontSize: 12, borderRadius: 4, background: "#03070A", border: "1px solid #123044", color: occ.status === "active" ? "#10b981" : "#A7B0B8" }}
+                          style={{ padding: "4px 8px", fontSize: 12, borderRadius: 4, background: "var(--color-bg)", border: "1px solid var(--color-border)", color: occ.status === "active" ? "#10b981" : "var(--color-text-secondary)" }}
                         >
                           <option value="active">Active</option>
                           <option value="pending">En attente</option>
@@ -973,7 +1359,7 @@ export function AdminDashboard() {
                     </tr>
                   ))}
                   {occasions.length === 0 && (
-                    <tr><td colSpan={7} style={{ textAlign: "center", padding: 20, color: "#A7B0B8" }}>Aucune annonce d'occasion.</td></tr>
+                    <tr><td colSpan={7} style={{ textAlign: "center", padding: 20, color: "var(--color-text-secondary)" }}>Aucune annonce d'occasion.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1036,7 +1422,7 @@ export function AdminDashboard() {
               <div className="tl-modal-section">
                 <h4><DollarSign size={16} style={{ verticalAlign: "middle", marginRight: 6 }} /> Devis & Prix</h4>
                 <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                  <label style={{ fontWeight: 600, color: "#F5F7FA" }}>Prix Total (DT) :</label>
+                  <label style={{ fontWeight: 600, color: "var(--color-text)" }}>Prix Total (DT) :</label>
                   <input
                     type="number"
                     style={{ width: 120 }}
@@ -1063,7 +1449,7 @@ export function AdminDashboard() {
                 {selectedReq.price && (
                   <div style={{ marginTop: 16, display: "flex", gap: 24, fontSize: "14px", flexWrap: "wrap" }}>
                     <div>
-                      <strong style={{ color: "#F5F7FA" }}>Acompte 30% :</strong> {selectedReq.depositAmount} DT{" "}
+                      <strong style={{ color: "var(--color-text)" }}>Acompte 30% :</strong> {selectedReq.depositAmount} DT{" "}
                       {["deposit_paid", "fully_paid"].includes(selectedReq.paymentStatus) ? (
                         <span className="tl-badge-paid">Encaissé ✓</span>
                       ) : (
@@ -1073,7 +1459,7 @@ export function AdminDashboard() {
                       )}
                     </div>
                     <div>
-                      <strong style={{ color: "#F5F7FA" }}>Solde 70% :</strong> {selectedReq.remainingAmount} DT{" "}
+                      <strong style={{ color: "var(--color-text)" }}>Solde 70% :</strong> {selectedReq.remainingAmount} DT{" "}
                       {selectedReq.paymentStatus === "fully_paid" ? (
                         <span className="tl-badge-paid">Encaissé ✓</span>
                       ) : (
@@ -1094,7 +1480,7 @@ export function AdminDashboard() {
                     
                     {/* Select Driver */}
                     <div style={{ flex: 1, minWidth: 200 }}>
-                      <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#F5F7FA", fontSize: 13 }}>Livreur :</label>
+                      <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "var(--color-text)", fontSize: 13 }}>Livreur :</label>
                       <select
                         value={selectedReq.driverId || ""}
                         onChange={(e) => handleAssignDriver(e.target.value)}
@@ -1112,7 +1498,7 @@ export function AdminDashboard() {
                     {/* WhatsApp Action Buttons for the assigned driver */}
                     {(selectedReq.driverId || selectedReq.driverName) && selectedReq.price && (
                       <div style={{ flex: 2, display: "flex", gap: 10, flexDirection: "column" }}>
-                        <label style={{ display: "block", marginBottom: 0, fontWeight: 600, color: "#F5F7FA", fontSize: 13 }}>Ordres de mission (WhatsApp) :</label>
+                        <label style={{ display: "block", marginBottom: 0, fontWeight: 600, color: "var(--color-text)", fontSize: 13 }}>Ordres de mission (WhatsApp) :</label>
                         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                           <a 
                             href={generateDriverWhatsAppLink("pickup")} 
@@ -1138,7 +1524,7 @@ export function AdminDashboard() {
                   </div>
 
                   <div style={{ gridColumn: "span 2", marginTop: 8 }}>
-                    <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#F5F7FA", fontSize: 13 }}>Technicien :</label>
+                    <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "var(--color-text)", fontSize: 13 }}>Technicien :</label>
                     <select
                       value={selectedReq.technicianName || ""}
                       onChange={(e) => handleAssignTech(e.target.value)}

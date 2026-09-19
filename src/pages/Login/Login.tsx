@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Mail, Lock, AlertCircle } from "lucide-react";
 import { login } from "@/services/auth";
@@ -114,6 +114,14 @@ export function Login() {
                 : (isArabic ? "دخول" : "Se connecter")}
             </button>
           </form>
+
+          <div style={{ marginTop: "24px", textAlign: "center", fontSize: "14px", color: "var(--color-text-secondary)" }}>
+            {isArabic ? "ليس لديك حساب؟ " : "Vous n'avez pas de compte ? "}
+            <Link to="/signup" style={{ color: "var(--color-primary)", textDecoration: "none", fontWeight: 600 }}>
+              {isArabic ? "إنشاء حساب" : "S'inscrire"}
+            </Link>
+          </div>
+
 
         </div>
       </div>

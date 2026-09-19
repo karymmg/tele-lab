@@ -1,0 +1,417 @@
+/* ==========================================================================
+   TELE LAB — Checkout Modal (Premium Dark & Glass Theme)
+   ========================================================================== */
+
+.tl-checkout-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: checkoutFadeIn 0.25s ease-out;
+}
+
+@keyframes checkoutFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes checkoutSlideUp {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.tl-checkout-modal {
+  background: var(--color-bg, #0A1628);
+  border: 1px solid rgba(18, 48, 68, 0.6);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 540px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(0, 140, 255, 0.08);
+  animation: checkoutSlideUp 0.3s ease-out;
+}
+
+.tl-checkout-modal::-webkit-scrollbar {
+  width: 4px;
+}
+
+.tl-checkout-modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tl-checkout-modal::-webkit-scrollbar-thumb {
+  background: rgba(0, 140, 255, 0.2);
+  border-radius: 4px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.tl-checkout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 28px 16px;
+  border-bottom: 1px solid rgba(18, 48, 68, 0.4);
+}
+
+.tl-checkout-header h2 {
+  font-family: var(--font-display, sans-serif);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-text, #F5F7FA);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.tl-checkout-close {
+  background: rgba(18, 48, 68, 0.3);
+  border: 1px solid rgba(18, 48, 68, 0.5);
+  color: var(--color-text-secondary, #A7B0B8);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tl-checkout-close:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+/* ── Body ───────────────────────────────────────────────────────────────── */
+.tl-checkout-body {
+  padding: 24px 28px;
+}
+
+/* ── Order Summary ──────────────────────────────────────────────────────── */
+.tl-checkout-summary {
+  background: rgba(18, 48, 68, 0.15);
+  border: 1px solid rgba(18, 48, 68, 0.3);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.tl-checkout-summary-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #A7B0B8);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 12px;
+}
+
+.tl-checkout-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(18, 48, 68, 0.2);
+}
+
+.tl-checkout-item:last-child {
+  border-bottom: none;
+}
+
+.tl-checkout-item-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: rgba(18, 48, 68, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tl-checkout-item-img img {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.tl-checkout-item-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.tl-checkout-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text, #F5F7FA);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tl-checkout-item-qty {
+  font-size: 12px;
+  color: var(--color-text-secondary, #A7B0B8);
+}
+
+.tl-checkout-item-price {
+  font-size: 14px;
+  font-weight: 700;
+  color: #00A3FF;
+  flex-shrink: 0;
+}
+
+.tl-checkout-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 140, 255, 0.15);
+}
+
+.tl-checkout-total-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text, #F5F7FA);
+}
+
+.tl-checkout-total-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: #10b981;
+}
+
+/* ── Form ───────────────────────────────────────────────────────────────── */
+.tl-checkout-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tl-checkout-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tl-checkout-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #A7B0B8);
+}
+
+.tl-checkout-field input,
+.tl-checkout-field select {
+  padding: 12px 16px;
+  background: rgba(3, 7, 10, 0.6);
+  border: 1px solid rgba(18, 48, 68, 0.5);
+  border-radius: 10px;
+  color: var(--color-text, #F5F7FA);
+  font-size: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+
+.tl-checkout-field input:focus,
+.tl-checkout-field select:focus {
+  border-color: rgba(0, 140, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(0, 140, 255, 0.08);
+}
+
+.tl-checkout-field input::placeholder {
+  color: rgba(167, 176, 184, 0.5);
+}
+
+.tl-checkout-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ── Create Account Option ──────────────────────────────────────────────── */
+.tl-checkout-account-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(0, 140, 255, 0.05);
+  border: 1px solid rgba(0, 140, 255, 0.15);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tl-checkout-account-option:hover {
+  background: rgba(0, 140, 255, 0.08);
+  border-color: rgba(0, 140, 255, 0.25);
+}
+
+.tl-checkout-account-option input[type="checkbox"] {
+  accent-color: #00A3FF;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.tl-checkout-account-text {
+  flex: 1;
+}
+
+.tl-checkout-account-text strong {
+  display: block;
+  font-size: 14px;
+  color: var(--color-text, #F5F7FA);
+  margin-bottom: 2px;
+}
+
+.tl-checkout-account-text span {
+  font-size: 12px;
+  color: var(--color-text-secondary, #A7B0B8);
+}
+
+/* ── Password field (conditional) ───────────────────────────────────────── */
+.tl-checkout-password-field {
+  animation: checkoutSlideUp 0.2s ease-out;
+}
+
+/* ── Submit Button ──────────────────────────────────────────────────────── */
+.tl-checkout-submit {
+  width: 100%;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #008CFF 0%, #00A3FF 100%);
+  color: #fff;
+  font-family: var(--font-display, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tl-checkout-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 140, 255, 0.25);
+}
+
+.tl-checkout-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Success State ──────────────────────────────────────────────────────── */
+.tl-checkout-success {
+  text-align: center;
+  padding: 40px 28px;
+}
+
+.tl-checkout-success-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.1);
+  border: 2px solid rgba(16, 185, 129, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  animation: checkoutPulse 1s ease-out;
+}
+
+@keyframes checkoutPulse {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.tl-checkout-success h3 {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-text, #F5F7FA);
+  margin-bottom: 8px;
+}
+
+.tl-checkout-success p {
+  color: var(--color-text-secondary, #A7B0B8);
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.tl-checkout-order-number {
+  display: inline-block;
+  background: rgba(0, 140, 255, 0.1);
+  border: 1px solid rgba(0, 140, 255, 0.2);
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: #00A3FF;
+  margin: 12px 0 24px;
+}
+
+.tl-checkout-success-btn {
+  padding: 12px 32px;
+  background: rgba(18, 48, 68, 0.3);
+  border: 1px solid rgba(18, 48, 68, 0.5);
+  color: var(--color-text, #F5F7FA);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tl-checkout-success-btn:hover {
+  background: rgba(18, 48, 68, 0.5);
+}
+
+/* ── Error ──────────────────────────────────────────────────────────────── */
+.tl-checkout-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 10px;
+  color: #f87171;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 520px) {
+  .tl-checkout-modal {
+    max-width: 100%;
+    border-radius: 16px;
+  }
+
+  .tl-checkout-header,
+  .tl-checkout-body {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .tl-checkout-row {
+    grid-template-columns: 1fr;
+  }
+}

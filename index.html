@@ -8,7 +8,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#008CFF" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <link rel="apple-touch-icon" href="/icon-512.jpg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
     <title>Tele Lab — Réparation de téléphone à domicile</title>
     <meta name="description" content="Tele Lab répare votre téléphone à domicile. Livraison gratuite, paiement en deux fois, suivi en temps réel." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -35,56 +36,83 @@
         visibility: hidden;
         pointer-events: none;
       }
-      #tl-splash .tl-logo-text {
+      
+      .electro-svg {
+        width: 100%;
+        max-width: 450px;
+        height: auto;
+        overflow: visible;
+      }
+
+      .electro-text-main {
         font-family: 'Montserrat', sans-serif;
         font-weight: 800;
-        font-size: 2.4rem;
-        letter-spacing: -0.02em;
-        background: linear-gradient(135deg, #008CFF 0%, #00A3FF 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        margin-bottom: 6px;
-        animation: splashPulse 1.5s ease-in-out infinite;
+        font-size: 4rem;
+        fill: transparent;
+        stroke: #008CFF;
+        stroke-width: 1.5px;
+        stroke-dasharray: 600;
+        stroke-dashoffset: 600;
+        animation: 
+          drawText 1.8s cubic-bezier(0.25, 0.1, 0.25, 1) forwards,
+          glowMain 1.5s ease-in-out 1.5s infinite alternate,
+          fillMain 1s ease forwards 1.5s;
       }
-      #tl-splash .tl-logo-sub {
+
+      .electro-text-sub {
         font-family: 'Inter', sans-serif;
-        font-size: 0.7rem;
         font-weight: 500;
-        color: rgba(167, 176, 184, 0.55);
-        letter-spacing: 0.08em;
-        margin-bottom: 28px;
+        font-size: 1rem;
+        letter-spacing: 0.15em;
+        fill: transparent;
+        stroke: #00A3FF;
+        stroke-width: 0.5px;
+        stroke-dasharray: 300;
+        stroke-dashoffset: 300;
+        animation: 
+          drawText 1.5s cubic-bezier(0.25, 0.1, 0.25, 1) 0.8s forwards,
+          fillSub 0.8s ease forwards 2s;
       }
-      #tl-splash .tl-spinner {
-        width: 40px;
-        height: 40px;
-        border: 3px solid rgba(0, 140, 255, 0.15);
-        border-top-color: #008CFF;
-        border-radius: 50%;
-        animation: splashSpin 0.8s linear infinite;
+
+      @keyframes drawText {
+        to { stroke-dashoffset: 0; }
       }
+
+      @keyframes fillMain {
+        to { fill: #008CFF; stroke-width: 0; }
+      }
+
+      @keyframes fillSub {
+        to { fill: rgba(167, 176, 184, 0.8); stroke-width: 0; }
+      }
+
+      @keyframes glowMain {
+        0% { filter: drop-shadow(0 0 2px rgba(0, 140, 255, 0.2)); }
+        100% { filter: drop-shadow(0 0 16px rgba(0, 163, 255, 0.6)); }
+      }
+
       #tl-splash .tl-tagline {
-        margin-top: 20px;
+        margin-top: 10px;
         font-family: 'Inter', sans-serif;
         font-size: 0.85rem;
-        color: rgba(167, 176, 184, 0.7);
+        color: rgba(167, 176, 184, 0.4);
         letter-spacing: 0.05em;
+        opacity: 0;
+        animation: fadeIn 1s ease forwards 2.2s;
       }
-      @keyframes splashSpin {
-        to { transform: rotate(360deg); }
-      }
-      @keyframes splashPulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.6; }
+
+      @keyframes fadeIn {
+        to { opacity: 1; }
       }
     </style>
   </head>
   <body>
     <!-- Splash Screen (removed by React after mount) -->
     <div id="tl-splash">
-      <div class="tl-logo-text">TELE LAB</div>
-      <div class="tl-logo-sub">by Telephonic Pro</div>
-      <div class="tl-spinner"></div>
+      <svg class="electro-svg" viewBox="0 0 500 150">
+        <text x="50%" y="45%" text-anchor="middle" dominant-baseline="middle" class="electro-text-main">TELE LAB</text>
+        <text x="50%" y="85%" text-anchor="middle" dominant-baseline="middle" class="electro-text-sub">BY TELEPHONIC PRO</text>
+      </svg>
       <div class="tl-tagline">Réparation à domicile</div>
     </div>
 

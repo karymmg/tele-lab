@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -50,6 +51,14 @@ const STEPS = [
   { icon: Truck,       key: 5, side: "left"  },
   { icon: CheckCircle, key: 6, side: "right" },
 ] as const;
+/* ── Hero slides ────────────────────────────────────────────────────────── */
+
+const DEFAULT_HERO_SLIDES = [
+  { src: "/hero_repair.jpg", alt: "Réparation professionnelle", badge: "LABO TECHNIQUE", icon: <Wrench size={18} /> },
+  { src: "/hero_repair_tech.jpg", alt: "Micro-soudure de précision", badge: "MICRO-SOUDURE", icon: <Cpu size={18} /> },
+  { src: "/hero_marketplace.jpg", alt: "Marché de l'occasion", badge: "OCCASION", icon: <Store size={18} /> },
+  { src: "/hero_accessories.jpg", alt: "Accessoires premium", badge: "ACCESSOIRES", icon: <ShoppingBag size={18} /> },
+];
 
 /* ── Component ───────────────────────────────────────────────────────────── */
 
@@ -58,8 +67,19 @@ export function Home() {
 
   // Scroll hooks
   useScrollReveal();
-  useParallax(".tl-hero__img", 0.12);
+  useParallax(".tl-hero__img.is-active", 0.12);
   useScrollProgress();
+
+  // Hero carousel
+  const heroSlides = DEFAULT_HERO_SLIDES;
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [heroSlides.length]);
 
   return (
     <main className="tl-home">
@@ -80,15 +100,15 @@ export function Home() {
             </div>
 
             <h1 className="tl-hero__title animate-in delay-1">
-              <span>{t("hero.titleLine2")}</span>
+              <span>Réparation Rapide</span>
               <span className="tl-hero__title-accent">
-                {t("hero.titleLine3")}
-                <HomeIcon className="tl-hero__title-icon" size={52} />
+                & Boutique Tech
               </span>
             </h1>
 
-            <p className="tl-hero__subtitle animate-in delay-2">
-              Réparation professionnelle à domicile & boutique d'accessoires et d'appareils d'occasion — tout au même endroit.
+            <p className="tl-hero__subtitle animate-in delay-2" style={{ fontSize: 17, maxWidth: 600, lineHeight: 1.6 }}>
+              <strong>Réparation de téléphones à domicile</strong> avec déplacement <span style={{ color: "var(--color-primary-dark)", fontWeight: 700 }}>100% Gratuit</span>.<br/>
+              Découvrez aussi notre <strong>Boutique</strong> de smartphones d'occasion et accessoires (Livraison : 7 DT).
             </p>
 
             {/* Two CTA buttons — Repair + Shop */}
@@ -113,18 +133,32 @@ export function Home() {
             </div>
           </div>
 
-          {/* Visual */}
+          {/* Visual — Carousel */}
           <div className="tl-hero__visual animate-in delay-2">
             <div className="tl-hero__img-frame">
-              <img
-                src="/hero_repair.jpg"
-                alt="Technicien réparant un téléphone en laboratoire"
-                className="tl-hero__img"
-              />
+              {heroSlides.map((slide, i) => (
+                <img
+                  key={i}
+                  src={slide.src}
+                  alt={slide.alt}
+                  className={`tl-hero__img ${i === currentSlide ? "is-active" : ""}`}
+                />
+              ))}
               <div className="tl-hero__img-overlay" />
               <div className="tl-hero__img-badge">
-                <Wrench size={18} />
-                <span>LABO TECHNIQUE</span>
+                {heroSlides[currentSlide].icon}
+                <span>{heroSlides[currentSlide].badge}</span>
+              </div>
+              {/* Dots */}
+              <div className="tl-hero__dots">
+                {heroSlides.map((_, i) => (
+                  <button
+                    key={i}
+                    className={`tl-hero__dot ${i === currentSlide ? "is-active" : ""}`}
+                    onClick={() => setCurrentSlide(i)}
+                    aria-label={`Slide ${i + 1}`}
+                  />
+                ))}
               </div>
             </div>
           </div>
@@ -132,29 +166,29 @@ export function Home() {
         </div>
       </section>
 
-      {/* ── DUAL PURPOSE BANNER ─────────────────────────────────────── */}
+      {/* ── DUAL PURPOSE BANNER (Main Choice) ───────────────────────── */}
       <section className="tl-dual-banner">
         <div className="container">
           <div className="tl-dual-grid">
             <Link to="/demande" className="tl-dual-card tl-dual-card--repair reveal-left">
               <div className="tl-dual-card__icon">
-                <Wrench size={32} />
+                <Wrench size={48} />
               </div>
               <div className="tl-dual-card__content">
-                <h3>Réparation à Domicile</h3>
-                <p>Écrans, batteries, micro-soudure — collecte & retour gratuits</p>
+                <h2>Réparation</h2>
+                <p>Mon appareil est en panne. (Écrans, batteries, micro-soudure à domicile)</p>
               </div>
-              <ArrowRight size={20} className="tl-dual-card__arrow" />
+              <ArrowRight size={28} className="tl-dual-card__arrow" />
             </Link>
             <Link to="/shop" className="tl-dual-card tl-dual-card--shop reveal-right">
               <div className="tl-dual-card__icon tl-dual-card__icon--shop">
-                <Store size={32} />
+                <Store size={48} />
               </div>
               <div className="tl-dual-card__content">
-                <h3>Boutique en Ligne</h3>
-                <p>Accessoires neufs, téléphones & consoles d'occasion</p>
+                <h2>Boutique</h2>
+                <p>Je veux acheter ou vendre. (Neuf, occasion, accessoires)</p>
               </div>
-              <ArrowRight size={20} className="tl-dual-card__arrow" />
+              <ArrowRight size={28} className="tl-dual-card__arrow" />
             </Link>
           </div>
         </div>
