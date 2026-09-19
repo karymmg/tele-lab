@@ -248,6 +248,7 @@ export const repairStore = {
       note,
       changed_by: changedBy
     });
+    return { ...req, price: pricing.total, depositAmount: pricing.deposit, remainingAmount: pricing.remaining, status: newStatus, statusHistory: newHistory };
   },
 
   async deleteRequest(id: string) {
@@ -282,6 +283,7 @@ export const repairStore = {
       note,
       changed_by: changedBy
     });
+    return { ...req, driverId, driverName, status: newStatus, statusHistory: newHistory };
   },
 
   async assignTechnician(id: string, technicianName: string) {
@@ -303,12 +305,13 @@ export const repairStore = {
       note,
       changed_by: changedBy
     });
+    return { ...req, technicianName, statusHistory: newHistory };
   },
 
   async recordPayment(id: string, paymentType: "deposit" | "full") {
     const req = cachedRequests.find(r => r.id === id);
     if (!req) return;
-    const newPaymentStatus = paymentType === "deposit" ? "deposit_paid" : "fully_paid";
+    const newPaymentStatus: PaymentStatus = paymentType === "deposit" ? "deposit_paid" : "fully_paid";
     const note = paymentType === "deposit"
               ? `Acompte de 30% (${req.depositAmount ?? 0} DT) encaissé.`
               : `Solde final de 70% (${req.remainingAmount ?? 0} DT) encaissé. Totalité réglée.`;
@@ -327,6 +330,7 @@ export const repairStore = {
       note,
       changed_by: changedBy
     });
+    return { ...req, paymentStatus: newPaymentStatus, statusHistory: newHistory };
   },
 };
 

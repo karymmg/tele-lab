@@ -593,7 +593,6 @@
 }
 
 /* Left-side card: card is in col 1, node col 2, spacer col 3 */
-.tl-vtimeline__row--left  { }
 
 /* Right-side card: spacer col 1, node col 2, card col 3 */
 .tl-vtimeline__row--right .tl-vtimeline__card {
@@ -688,7 +687,9 @@
 }
 
 /* Spacer */
-.tl-vtimeline__spacer { /* invisible, fills the opposite column */ }
+.tl-vtimeline__spacer { /* invisible, fills the opposite column */
+  display: block;
+}
 
 /* Mobile: single column */
 @media (max-width: 768px) {

@@ -16,4 +16,5 @@ export interface ShopProduct {
   imageUrl?: string;
   active: boolean;
   createdAt: string;
+  views?: number;
 }

@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useRepairRequests, useDrivers, repairStore } from "@/services/store";
 import { RepairRequest } from "@/types/telelab";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { RepairStatusKey, REPAIR_STATUSES } from "@/utils/status";
-import { useAuth, hasAccount } from "@/services/auth";
+import { useAuth } from "@/services/auth";
 import { Settings, Search, X, Clock, User, Phone, DollarSign, Truck, FileText, Users, Wrench, MessageCircle, Plus, Trash2, Printer, Store, Package, ShoppingBag, BarChart3, Shield, Eye } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { RepairRequestForm } from "@/components/forms/RepairRequestForm";
@@ -43,6 +43,19 @@ export function AdminDashboard() {
   const isArabic = i18n.language === "ar";
 
   const [activeTab, setActiveTab] = useState<TabType>("stats");
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll the active tab into view on mobile
+  useEffect(() => {
+    const container = tabsRef.current;
+    if (!container) return;
+    const activeBtn = container.querySelector(".tl-tab-btn.is-active") as HTMLElement | null;
+    if (!activeBtn) return;
+    const containerRect = container.getBoundingClientRect();
+    const btnRect = activeBtn.getBoundingClientRect();
+    const scrollLeft = activeBtn.offsetLeft - containerRect.width / 2 + btnRect.width / 2;
+    container.scrollTo({ left: scrollLeft, behavior: "smooth" });
+  }, [activeTab]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [selectedReq, setSelectedReq] = useState<RepairRequest | null>(null);
@@ -122,9 +135,10 @@ export function AdminDashboard() {
       });
       
       if (error) throw error;
-      if (data.user) {
+      const createdUser = data.user;
+      if (createdUser) {
         const { error: profileError } = await supabase.from("profiles").insert({
-          id: data.user.id,
+          id: createdUser.id,
           first_name: newUser.firstName,
           last_name: newUser.lastName,
           phone: newUser.phone,
@@ -135,7 +149,7 @@ export function AdminDashboard() {
         if (profileError) throw profileError;
         
         setProfileUsers(prev => [{
-          id: data.user.id,
+          id: createdUser.id,
           first_name: newUser.firstName,
           last_name: newUser.lastName,
           phone: newUser.phone,
@@ -343,42 +357,42 @@ export function AdminDashboard() {
     }, 100);
   }
 
-  function handleSavePrice() {
+  async function handleSavePrice() {
     if (!selectedReq) return;
     const p = parseFloat(editingPrice);
     if (!isNaN(p) && p > 0) {
-      const updated = repairStore.updatePrice(selectedReq.id, p);
+      const updated = await repairStore.updatePrice(selectedReq.id, p);
       if (updated) setSelectedReq(updated);
     }
   }
 
-  function handleChangeStatus(newStatus: RepairStatusKey) {
+  async function handleChangeStatus(newStatus: RepairStatusKey) {
     if (!selectedReq) return;
-    const updated = repairStore.updateStatus(selectedReq.id, newStatus, customNote || undefined, user?.displayName || "Admin Tele Lab");
+    const updated = await repairStore.updateStatus(selectedReq.id, newStatus, customNote || undefined, user?.displayName || "Admin Tele Lab");
     if (updated) {
       setSelectedReq(updated);
       setCustomNote("");
     }
   }
 
-  function handleAssignDriver(driverId: string) {
+  async function handleAssignDriver(driverId: string) {
     if (!selectedReq) return;
     const driver = drivers.find(d => d.id === driverId);
     if(driver) {
-      const updated = repairStore.assignDriver(selectedReq.id, driver.name, driver.id);
+      const updated = await repairStore.assignDriver(selectedReq.id, driver.name, driver.id);
       if (updated) setSelectedReq(updated);
     }
   }
 
-  function handleAssignTech(techName: string) {
+  async function handleAssignTech(techName: string) {
     if (!selectedReq) return;
-    const updated = repairStore.assignTechnician(selectedReq.id, techName);
+    const updated = await repairStore.assignTechnician(selectedReq.id, techName);
     if (updated) setSelectedReq(updated);
   }
 
-  function handlePayment(type: "deposit" | "full") {
+  async function handlePayment(type: "deposit" | "full") {
     if (!selectedReq) return;
-    const updated = repairStore.recordPayment(selectedReq.id, type);
+    const updated = await repairStore.recordPayment(selectedReq.id, type);
     if (updated) setSelectedReq(updated);
   }
 
@@ -423,7 +437,7 @@ export function AdminDashboard() {
             <p>{isArabic ? `متصل بـ: ${user?.displayName || "Admin"}` : `Connecté : ${user?.displayName || "Admin"}`}</p>
           </div>
           
-          <div className="tl-admin-tabs">
+          <div className="tl-admin-tabs" ref={tabsRef}>
             <button 
               className={`tl-tab-btn ${activeTab === "stats" ? "is-active" : ""}`}
               onClick={() => { setActiveTab("stats"); setSearch(""); }}
@@ -654,7 +668,7 @@ export function AdminDashboard() {
                             <a href={`tel:${req.customer.phone}`}>{req.customer.phone}</a>
                           </div>
                           <div style={{ marginTop: 4 }}>
-                            {hasAccount(req.customer.phone.replace(/[\s\-\+]/g, "")) ? (
+                            {profileUsers.some(u => u.phone.replace(/[\s\-\+]/g, "") === req.customer.phone.replace(/[\s\-\+]/g, "")) ? (
                               <span style={{ fontSize: "10px", color: "#10b981", background: "rgba(16,185,129,0.1)", padding: "2px 6px", borderRadius: 4 }}>Compte Actif</span>
                             ) : (
                               <span style={{ fontSize: "10px", color: "#f59e0b", background: "rgba(245,158,11,0.1)", padding: "2px 6px", borderRadius: 4 }}>Invité</span>
