@@ -4,11 +4,12 @@ import { useShopCategories, useShopProducts, shopStore } from "@/services/shopSt
 import { useOccasions, occasionStore } from "@/services/occasionStore";
 import { useAuth } from "@/services/auth";
 import { useCartStore } from "@/services/cartStore";
-import { Search, Store, ShoppingBag, Package, Plus, UserCheck, MessageCircle, ShoppingCart } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Search, Store, ShoppingBag, Package, Plus, UserCheck, MessageCircle, ShoppingCart, CheckCircle2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import "./Shop.css";
 
 export function Shop() {
+  const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const isArabic = i18n.language === "ar";
   const categories = useShopCategories();
@@ -23,6 +24,9 @@ export function Shop() {
 
   const handleProductClick = (id: string, isOccasion: boolean) => {
     occasionStore.incrementViews(id, isOccasion);
+    if (isOccasion) {
+      navigate(`/shop/occasion/${id}`);
+    }
   };
 
   const filteredProducts = products.filter(p => {
@@ -47,7 +51,7 @@ export function Shop() {
         <div className="tl-shop-header fade-in-up">
           <div className="tl-shop-title">
             <h1>
-              <Store size={32} style={{ verticalAlign: "middle", marginRight: 12, color: "#008CFF" }} />
+              <Store size={32} style={{ verticalAlign: "middle", marginRight: 12, color: "var(--color-primary)" }} />
               {isArabic ? "المتجر" : "Boutique"}
             </h1>
             
@@ -78,7 +82,7 @@ export function Shop() {
           </div>
           
           <div className="tl-shop-search">
-            <Search size={20} color="#A7B0B8" className="search-icon" />
+            <Search size={20} color="var(--color-text-secondary)" className="search-icon" />
             <input
               type="text"
               placeholder={isArabic ? "بحث عن منتج..." : "Rechercher un produit..."}
@@ -131,11 +135,11 @@ export function Shop() {
 
             <div>
               {isLoggedIn ? (
-                <Link to="/shop/add-occasion" className="tl-btn-manage" style={{ background: "rgba(0,140,255,0.1)", color: "#00A3FF", borderColor: "rgba(0,140,255,0.3)" }}>
+                <Link to="/shop/add-occasion" className="tl-btn-manage" style={{ background: "rgba(var(--color-primary-rgb),0.1)", color: "var(--color-primary-dark)", borderColor: "rgba(var(--color-primary-rgb),0.3)" }}>
                   <Plus size={16} /> {isArabic ? "إضافة إعلان" : "Publier une annonce"}
                 </Link>
               ) : (
-                <Link to="/login" className="tl-btn-manage" style={{ background: "rgba(167,176,184,0.1)", color: "#A7B0B8", borderColor: "rgba(167,176,184,0.3)" }}>
+                <Link to="/login" className="tl-btn-manage" style={{ background: "rgba(167,176,184,0.1)", color: "var(--color-text-secondary)", borderColor: "rgba(167,176,184,0.3)" }}>
                   <UserCheck size={16} /> {isArabic ? "تسجيل الدخول للنشر" : "Connectez-vous pour vendre"}
                 </Link>
               )}
@@ -153,7 +157,7 @@ export function Shop() {
                     <img src={prod.imageUrl} alt={prod.name} className="tl-product-img" loading="lazy" />
                   ) : (
                     <div className="tl-product-placeholder">
-                      <Package size={48} color="#123044" />
+                      <Package size={48} color="var(--color-border)" />
                     </div>
                   )}
                   {prod.stock === 0 && (
@@ -195,72 +199,76 @@ export function Shop() {
               </div>
             ))
           ) : (
-            filteredOccasions.map(occ => (
-              <div key={occ.id} className="tl-product-card" onClick={() => handleProductClick(occ.id, true)}>
-                <div className="tl-product-img-wrapper">
-                  {occ.photos && occ.photos.length > 0 ? (
-                    <img src={occ.photos[0]} alt={occ.model} className="tl-product-img" loading="lazy" />
-                  ) : (
-                    <div className="tl-product-placeholder">
-                      <Package size={48} color="#123044" />
+            filteredOccasions.map(occ => {
+              const cleanPhone = occ.whatsappNumber.replace(/[^0-9]/g, "");
+              const formattedPhone = cleanPhone.startsWith("216") ? cleanPhone : (cleanPhone.length === 8 ? `216${cleanPhone}` : cleanPhone);
+              const waText = encodeURIComponent(`Bonjour ! Je suis intéressé(e) par votre annonce "${occ.brand} ${occ.model}" à ${occ.price} DT sur TeleLab.`);
+
+              return (
+                <div 
+                  key={occ.id} 
+                  className="tl-product-card tl-occasion-card" 
+                  onClick={() => handleProductClick(occ.id, true)}
+                >
+                  <div className="tl-product-img-wrapper">
+                    {occ.photos && occ.photos.length > 0 ? (
+                      <img src={occ.photos[0]} alt={occ.model} className="tl-product-img" loading="lazy" />
+                    ) : (
+                      <div className="tl-product-placeholder">
+                        <Package size={48} color="var(--color-border)" />
+                      </div>
+                    )}
+                    <div className="tl-product-badge" style={{ background: "rgba(var(--color-primary-rgb),0.85)", color: "var(--color-surface)" }}>
+                      {occ.condition}
                     </div>
-                  )}
-                  <div className="tl-product-badge" style={{ background: "rgba(0,140,255,0.8)", color: "#FFF" }}>
-                    {occ.condition}
                   </div>
-                </div>
-                
-                <div className="tl-product-info">
-                  <div style={{ fontSize: 12, color: "#00A3FF", fontWeight: 600, marginBottom: 4 }}>{occ.type} • {occ.brand}</div>
-                  <h3>{occ.model}</h3>
-                  <p className="tl-product-desc">{occ.description}</p>
                   
-                  <div className="tl-product-footer">
-                    <div className="tl-product-price">
-                      {occ.price.toFixed(2)} <span>DT</span>
+                  <div className="tl-product-info">
+                    <div style={{ fontSize: 12, color: "var(--color-primary-dark)", fontWeight: 600, marginBottom: 4 }}>
+                      {occ.type} • {occ.brand}
                     </div>
-                    <div style={{ display: "flex", gap: "8px" }}>
+                    <h3>{occ.model}</h3>
+                    <p className="tl-product-desc">{occ.description}</p>
+                    
+                    {/* Seller details with verified badge */}
+                    <div className="tl-seller-row">
+                      <span className="tl-seller-name-label">
+                        {occ.sellerName || "Vendeur TeleLab"}
+                      </span>
+                      {occ.sellerVerified ? (
+                        <span className="tl-seller-verified-tag" title="Identité vérifiée par carte CIN">
+                          <CheckCircle2 size={13} />
+                          <span>Vérifié</span>
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="tl-product-footer">
+                      <div className="tl-product-price">
+                        {occ.price.toFixed(2)} <span>DT</span>
+                      </div>
                       <a 
-                        href={`https://wa.me/${occ.whatsappNumber.replace(/[^0-9]/g, "")}`} 
+                        href={`https://wa.me/${formattedPhone}?text=${waText}`} 
                         target="_blank" 
                         rel="noreferrer"
-                        className="tl-btn-cart"
-                        style={{ background: "#25d366", color: "#FFF", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px", textDecoration: "none" }}
+                        className="tl-btn-whatsapp-card"
                         onClick={(e) => e.stopPropagation()}
-                        title="Contacter par WhatsApp"
+                        title="Contacter le vendeur sur WhatsApp"
                       >
-                        <MessageCircle size={18} />
+                        <MessageCircle size={17} />
+                        <span>WhatsApp</span>
                       </a>
-                      <button 
-                        className="tl-btn-primary" 
-                        style={{ padding: "8px", borderRadius: "8px", minWidth: "40px", display: "flex", justifyContent: "center" }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addItem({
-                            id: occ.id,
-                            name: occ.model,
-                            price: occ.price,
-                            quantity: 1,
-                            imageUrl: occ.photos && occ.photos.length > 0 ? occ.photos[0] : undefined,
-                            isOccasion: true
-                          });
-                          toggleCart();
-                        }}
-                        title="Ajouter au panier"
-                      >
-                        <ShoppingCart size={18} />
-                      </button>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
         {((shopMode === "neuf" && filteredProducts.length === 0) || (shopMode === "occasion" && filteredOccasions.length === 0)) && (
           <div className="tl-shop-empty fade-in-up">
-            <Package size={64} color="#123044" />
+            <Package size={64} color="var(--color-border)" />
             <h3>{isArabic ? "لا توجد منتجات" : "Aucun produit trouvé"}</h3>
             <p>{isArabic ? "جرب البحث بكلمات أخرى" : "Essayez une autre recherche ou catégorie"}</p>
           </div>

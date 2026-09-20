@@ -112,7 +112,7 @@ export function Header() {
             {getTotalItems() > 0 && (
               <span style={{ 
                 position: "absolute", top: -2, right: -4, 
-                background: "#0077E6", color: "#fff", 
+                background: "#0077E6", color: "var(--color-surface)", 
                 fontSize: "9px", fontWeight: "bold", 
                 borderRadius: "10px", padding: "2px 5px" 
               }}>
@@ -190,13 +190,13 @@ export function Header() {
         <div className="tl-header__mobile-actions">
           {isLoggedIn ? (
             <>
-              <Link to={dashboardLink} className="tl-header__mobile-link" style={{ color: "#00A3FF" }}>
+              <Link to={dashboardLink} className="tl-header__mobile-link" style={{ color: "var(--color-primary-dark)" }}>
                 Dashboard
               </Link>
               <button
                 className="tl-header__mobile-link"
                 onClick={() => { logout(); navigate("/"); }}
-                style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", textAlign: "left", padding: "12px 0", fontSize: "inherit" }}
+                style={{ background: "none", border: "none", color: "var(--color-error)", cursor: "pointer", textAlign: "left", padding: "12px 0", fontSize: "inherit" }}
               >
                 {isArabic ? "تسجيل الخروج" : "Déconnexion"}
               </button>

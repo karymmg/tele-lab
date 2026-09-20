@@ -15,6 +15,8 @@ export interface OccasionProduct {
   views: number;
   status: OccasionStatus;
   createdAt: string;
+  sellerName?: string;
+  sellerVerified?: boolean;
 }
 
 export interface SiteVisit {

@@ -33,12 +33,12 @@ export function CircuitBackground() {
     let pulses: Pulse[] = [];
 
     const COLORS = {
-      node: "rgba(0, 140, 255, 0.35)",
-      nodeGlow: "rgba(0, 140, 255, 0.12)",
-      line: "rgba(0, 140, 255, 0.08)",
-      pulseBlue: "#00A3FF",
-      pulsePurple: "#8b5cf6",
-      pulseGreen: "#10b981",
+      node: "rgba(var(--color-primary-rgb), 0.35)",
+      nodeGlow: "rgba(var(--color-primary-rgb), 0.12)",
+      line: "rgba(var(--color-primary-rgb), 0.08)",
+      pulseBlue: "var(--color-primary-dark)",
+      pulsePurple: "var(--color-purple)",
+      pulseGreen: "var(--color-success)",
     };
 
     function resize() {
@@ -126,36 +126,7 @@ export function CircuitBackground() {
         node.y = Math.max(0, Math.min(h, node.y));
       }
 
-      // Draw connections (circuit lines) — orthogonal style
-      for (let i = 0; i < nodes.length; i++) {
-        const a = nodes[i];
-        for (const j of a.connections) {
-          if (j <= i) continue; // avoid duplicates
-          const b = nodes[j];
-
-          ctx!.beginPath();
-          ctx!.strokeStyle = COLORS.line;
-          ctx!.lineWidth = 0.8;
-
-          // Draw L-shaped (orthogonal) line for circuit feel
-          const midX = (a.x + b.x) / 2;
-          if (Math.abs(a.x - b.x) > Math.abs(a.y - b.y)) {
-            // Horizontal first, then vertical
-            ctx!.moveTo(a.x, a.y);
-            ctx!.lineTo(midX, a.y);
-            ctx!.lineTo(midX, b.y);
-            ctx!.lineTo(b.x, b.y);
-          } else {
-            // Vertical first, then horizontal
-            const midY = (a.y + b.y) / 2;
-            ctx!.moveTo(a.x, a.y);
-            ctx!.lineTo(a.x, midY);
-            ctx!.lineTo(b.x, midY);
-            ctx!.lineTo(b.x, b.y);
-          }
-          ctx!.stroke();
-        }
-      }
+      // Connections (circuit lines) removed per user request
 
       // Draw nodes (junction dots)
       for (let i = 0; i < nodes.length; i++) {

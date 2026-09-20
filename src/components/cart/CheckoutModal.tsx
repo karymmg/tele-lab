@@ -122,7 +122,7 @@ export function CheckoutModal({ items, totalPrice, onClose, onSuccess }: Checkou
         <div className="tl-checkout-modal" onClick={(e) => e.stopPropagation()}>
           <div className="tl-checkout-success">
             <div className="tl-checkout-success-icon">
-              <CheckCircle size={36} color="#10b981" />
+              <CheckCircle size={36} color="var(--color-success)" />
             </div>
             <h3>{isArabic ? "تم تأكيد الطلب! 🎉" : "Commande confirmée ! 🎉"}</h3>
             <p>
@@ -132,7 +132,7 @@ export function CheckoutModal({ items, totalPrice, onClose, onSuccess }: Checkou
             </p>
             <div className="tl-checkout-order-number">{successOrder}</div>
             {wantAccount && (
-              <p style={{ color: "#10b981", fontSize: 13 }}>
+              <p style={{ color: "var(--color-success)", fontSize: 13 }}>
                 {isArabic ? "✓ تم إنشاء حسابك بنجاح!" : "✓ Votre compte a été créé avec succès !"}
               </p>
             )}
@@ -178,7 +178,7 @@ export function CheckoutModal({ items, totalPrice, onClose, onSuccess }: Checkou
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.name} />
                   ) : (
-                    <Package size={18} color="#A7B0B8" />
+                    <Package size={18} color="var(--color-text-secondary)" />
                   )}
                 </div>
                 <div className="tl-checkout-item-details">

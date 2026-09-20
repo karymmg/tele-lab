@@ -12,6 +12,12 @@
   --color-bg-secondary: #071016;
   --color-border: #123044;
   --color-glass: rgba(7, 16, 22, 0.6);
+  --color-purple: #8B5CF6;
+
+  /* RGB Variables for rgba() usage */
+  --color-primary-rgb: 0, 140, 255;
+  --color-primary-dark-rgb: 0, 163, 255;
+  --color-purple-rgb: 139, 92, 246;
 
   /* Accent néon - Vibrants pour le look motion graphics */
   --neon-gradient: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
@@ -73,6 +79,11 @@
   --color-bg-secondary: #F1F5F9;
   --color-border: #E2E8F0;
   --color-glass: rgba(255, 255, 255, 0.7);
+  --color-purple: #7C3AED;
+  
+  --color-primary-rgb: 0, 119, 230;
+  --color-primary-dark-rgb: 0, 95, 153;
+  --color-purple-rgb: 124, 58, 237;
 
   /* Adjustments for light mode */
   --neon-glow: 0 4px 12px rgba(0, 119, 230, 0.15);

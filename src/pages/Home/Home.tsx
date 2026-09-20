@@ -89,7 +89,7 @@ export function Home() {
       {/* ── HERO ──────────────────────────────────────────────────────── */}
       <section className="tl-hero">
         <div className="tl-hero__glow" aria-hidden="true" />
-        <CircuitBackground />
+        {/* CircuitBackground removed per user request (blanc ma fiha chy) */}
         <div className="container tl-hero__inner">
 
           {/* Copy */}
@@ -414,9 +414,9 @@ export function Home() {
             <span className="tl-stat__label">{t("stats.avgTime")}</span>
           </div>
           <div className="tl-stat reveal">
-            <Store className="tl-stat__icon" size={36} style={{ color: "#8b5cf6" }} />
+            <Store className="tl-stat__icon" size={36} style={{ color: "var(--color-purple)" }} />
             <span className="tl-stat__value">200+</span>
-            <span className="tl-stat__label" style={{ color: "#8b5cf6" }}>PRODUITS EN BOUTIQUE</span>
+            <span className="tl-stat__label" style={{ color: "var(--color-purple)" }}>PRODUITS EN BOUTIQUE</span>
           </div>
         </div>
       </section>

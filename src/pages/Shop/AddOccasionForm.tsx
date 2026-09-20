@@ -10,7 +10,7 @@ import "./Shop.css"; // Reuse shop styles
 export function AddOccasionForm() {
   const { t, i18n } = useTranslation();
   const isArabic = i18n.language === "ar";
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   // CIN Verification State
@@ -32,8 +32,10 @@ export function AddOccasionForm() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  // Check CIN on mount
+  // Check CIN on mount — wait for auth to finish loading first
   useEffect(() => {
+    if (authLoading) return; // Don't redirect while auth is still loading
+    
     if (!isLoggedIn) {
       navigate("/login");
       return;
@@ -53,7 +55,7 @@ export function AddOccasionForm() {
       }
     }
     checkCIN();
-  }, [user, isLoggedIn, navigate]);
+  }, [user, isLoggedIn, authLoading, navigate]);
 
   const handleCinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,7 +138,7 @@ export function AddOccasionForm() {
   if (hasCin === null) {
     return (
       <div className="container" style={{ padding: "100px 0", textAlign: "center" }}>
-        <Loader2 className="spinner" size={32} style={{ margin: "0 auto", color: "#008CFF" }} />
+        <Loader2 className="spinner" size={32} style={{ margin: "0 auto", color: "var(--color-primary)" }} />
       </div>
     );
   }
@@ -152,17 +154,17 @@ export function AddOccasionForm() {
           
           <div className="tl-admin-card" style={{ padding: 32 }}>
             <h2>{isArabic ? "التحقق من الهوية" : "Vérification d'identité"}</h2>
-            <p style={{ color: "#A7B0B8", marginTop: 8, marginBottom: 24 }}>
+            <p style={{ color: "var(--color-text-secondary)", marginTop: 8, marginBottom: 24 }}>
               {isArabic 
                 ? "لأسباب أمنية وقانونية، يجب تقديم رقم بطاقة التعريف الوطنية قبل نشر إعلان." 
                 : "Pour des raisons de sécurité, vous devez fournir votre numéro de CIN avant de vendre un article."}
             </p>
             
-            {error && <div style={{ padding: 12, background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", borderRadius: 8, marginBottom: 16 }}>{error}</div>}
+            {error && <div style={{ padding: 12, background: "rgba(239, 68, 68, 0.1)", color: "var(--color-error)", borderRadius: 8, marginBottom: 16 }}>{error}</div>}
 
             <form onSubmit={handleCinSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
-                <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>
+                <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>
                   {isArabic ? "رقم بطاقة التعريف (CIN)" : "Numéro de CIN"}
                 </label>
                 <input
@@ -173,11 +175,11 @@ export function AddOccasionForm() {
                   placeholder="12345678"
                   value={cinNumber}
                   onChange={(e) => setCinNumber(e.target.value)}
-                  style={{ width: "100%", padding: "12px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                  style={{ width: "100%", padding: "12px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-surface)" }}
                 />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>
+                <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>
                   {isArabic ? "تاريخ الإصدار" : "Date de délivrance"}
                 </label>
                 <input
@@ -185,10 +187,10 @@ export function AddOccasionForm() {
                   required
                   value={cinDate}
                   onChange={(e) => setCinDate(e.target.value)}
-                  style={{ width: "100%", padding: "12px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}
+                  style={{ width: "100%", padding: "12px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-surface)" }}
                 />
               </div>
-              <button type="submit" disabled={verifyingCin} className="tl-btn-manage" style={{ background: "#00A3FF", color: "#FFF", borderColor: "#00A3FF", marginTop: 8 }}>
+              <button type="submit" disabled={verifyingCin} className="tl-btn-manage" style={{ background: "var(--color-primary-dark)", color: "var(--color-surface)", borderColor: "var(--color-primary-dark)", marginTop: 8 }}>
                 {verifyingCin ? <Loader2 className="spinner" size={16} /> : <CheckCircle2 size={16} />} 
                 {isArabic ? "تأكيد" : "Confirmer"}
               </button>
@@ -209,12 +211,12 @@ export function AddOccasionForm() {
         
         <div className="tl-admin-card" style={{ padding: 32 }}>
           <h2>{isArabic ? "نشر إعلان جديد" : "Publier une annonce"}</h2>
-          <p style={{ color: "#A7B0B8", marginTop: 8, marginBottom: 24 }}>
+          <p style={{ color: "var(--color-text-secondary)", marginTop: 8, marginBottom: 24 }}>
             {isArabic ? "الرجاء إدخال تفاصيل جهازك المستعمل بدقة" : "Veuillez renseigner les détails de votre appareil d'occasion."}
           </p>
 
           {success && (
-            <div style={{ padding: 16, background: "rgba(16, 185, 129, 0.1)", color: "#10b981", borderRadius: 8, marginBottom: 24, display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ padding: 16, background: "rgba(16, 185, 129, 0.1)", color: "var(--color-success)", borderRadius: 8, marginBottom: 24, display: "flex", alignItems: "center", gap: 12 }}>
               <CheckCircle2 size={24} />
               <div>
                 <strong>{isArabic ? "تم النشر بنجاح!" : "Annonce publiée avec succès!"}</strong>
@@ -223,22 +225,22 @@ export function AddOccasionForm() {
             </div>
           )}
 
-          {error && <div style={{ padding: 12, background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", borderRadius: 8, marginBottom: 24 }}>{error}</div>}
+          {error && <div style={{ padding: 12, background: "rgba(239, 68, 68, 0.1)", color: "var(--color-error)", borderRadius: 8, marginBottom: 24 }}>{error}</div>}
 
           <form onSubmit={handleSubmit} style={{ display: success ? "none" : "flex", flexDirection: "column", gap: 20 }}>
             
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div>
-                <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>{isArabic ? "نوع الجهاز" : "Type d'appareil"}</label>
-                <select value={type} onChange={(e) => setType(e.target.value as any)} style={{ width: "100%", padding: "12px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}>
+                <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>{isArabic ? "نوع الجهاز" : "Type d'appareil"}</label>
+                <select value={type} onChange={(e) => setType(e.target.value as any)} style={{ width: "100%", padding: "12px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-surface)" }}>
                   <option value="Téléphone">Téléphone</option>
                   <option value="PC">PC</option>
                   <option value="Console">Console de jeux</option>
                 </select>
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>{isArabic ? "الحالة" : "État"}</label>
-                <select value={condition} onChange={(e) => setCondition(e.target.value)} style={{ width: "100%", padding: "12px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }}>
+                <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>{isArabic ? "الحالة" : "État"}</label>
+                <select value={condition} onChange={(e) => setCondition(e.target.value)} style={{ width: "100%", padding: "12px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-surface)" }}>
                   <option value="Neuf (Déballé)">Neuf (Déballé)</option>
                   <option value="Comme neuf">Comme neuf</option>
                   <option value="Bon état">Bon état</option>
@@ -250,48 +252,48 @@ export function AddOccasionForm() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div>
-                <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>{isArabic ? "الماركة" : "Marque (ex: Apple, Samsung)"}</label>
-                <input type="text" required value={brand} onChange={e => setBrand(e.target.value)} style={{ width: "100%", padding: "12px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }} />
+                <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>{isArabic ? "الماركة" : "Marque (ex: Apple, Samsung)"}</label>
+                <input type="text" required value={brand} onChange={e => setBrand(e.target.value)} style={{ width: "100%", padding: "12px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-surface)" }} />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>{isArabic ? "الموديل" : "Modèle (ex: iPhone 13 Pro)"}</label>
-                <input type="text" required value={model} onChange={e => setModel(e.target.value)} style={{ width: "100%", padding: "12px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }} />
+                <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>{isArabic ? "الموديل" : "Modèle (ex: iPhone 13 Pro)"}</label>
+                <input type="text" required value={model} onChange={e => setModel(e.target.value)} style={{ width: "100%", padding: "12px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-surface)" }} />
               </div>
             </div>
 
             <div>
-              <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>{isArabic ? "الوصف" : "Description détaillée"}</label>
-              <textarea required rows={4} value={description} onChange={e => setDescription(e.target.value)} style={{ width: "100%", padding: "12px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }} />
+              <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>{isArabic ? "الوصف" : "Description détaillée"}</label>
+              <textarea required rows={4} value={description} onChange={e => setDescription(e.target.value)} style={{ width: "100%", padding: "12px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-surface)" }} />
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div>
-                <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>{isArabic ? "السعر (DT)" : "Prix (DT)"}</label>
-                <input type="number" step="1" min="1" required value={price} onChange={e => setPrice(e.target.value)} style={{ width: "100%", padding: "12px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }} />
+                <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>{isArabic ? "السعر (DT)" : "Prix (DT)"}</label>
+                <input type="number" step="1" min="1" required value={price} onChange={e => setPrice(e.target.value)} style={{ width: "100%", padding: "12px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-surface)" }} />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>{isArabic ? "رقم الواتساب للتواصل" : "Numéro WhatsApp de contact"}</label>
-                <input type="text" required placeholder="Ex: 55123456" value={whatsapp} onChange={e => setWhatsapp(e.target.value)} style={{ width: "100%", padding: "12px 16px", background: "#03070A", border: "1px solid #123044", borderRadius: 8, color: "#FFF" }} />
+                <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>{isArabic ? "رقم الواتساب للتواصل" : "Numéro WhatsApp de contact"}</label>
+                <input type="text" required placeholder="Ex: 55123456" value={whatsapp} onChange={e => setWhatsapp(e.target.value)} style={{ width: "100%", padding: "12px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-surface)" }} />
               </div>
             </div>
 
             <div>
-              <label style={{ display: "block", fontSize: 12, color: "#A7B0B8", marginBottom: 6 }}>
+              <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>
                 {isArabic ? "الصور (3 على الأقل، 5 كحد أقصى)" : "Photos (3 min, 5 max)"}
               </label>
               
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
                 {photos.map((file, idx) => (
-                  <div key={idx} style={{ position: "relative", width: 80, height: 80, borderRadius: 8, overflow: "hidden", border: "1px solid #123044" }}>
+                  <div key={idx} style={{ position: "relative", width: 80, height: 80, borderRadius: 8, overflow: "hidden", border: "1px solid var(--color-border)" }}>
                     <img src={URL.createObjectURL(file)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    <button type="button" onClick={() => handleRemovePhoto(idx)} style={{ position: "absolute", top: 4, right: 4, background: "rgba(239, 68, 68, 0.9)", border: "none", color: "#FFF", borderRadius: "50%", padding: 4, cursor: "pointer" }}>
+                    <button type="button" onClick={() => handleRemovePhoto(idx)} style={{ position: "absolute", top: 4, right: 4, background: "rgba(239, 68, 68, 0.9)", border: "none", color: "var(--color-surface)", borderRadius: "50%", padding: 4, cursor: "pointer" }}>
                       <Trash2 size={12} />
                     </button>
                   </div>
                 ))}
                 
                 {photos.length < 5 && (
-                  <label style={{ width: 80, height: 80, borderRadius: 8, border: "2px dashed #123044", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#00A3FF", background: "rgba(0,140,255,0.05)" }}>
+                  <label style={{ width: 80, height: 80, borderRadius: 8, border: "2px dashed var(--color-border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--color-primary-dark)", background: "rgba(var(--color-primary-rgb),0.05)" }}>
                     <Camera size={24} />
                     <input type="file" accept="image/*" multiple onChange={handleFileChange} style={{ display: "none" }} />
                   </label>
@@ -299,7 +301,7 @@ export function AddOccasionForm() {
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="tl-btn-manage" style={{ background: "#00A3FF", color: "#FFF", borderColor: "#00A3FF", marginTop: 16, height: 48 }}>
+            <button type="submit" disabled={loading} className="tl-btn-manage" style={{ background: "var(--color-primary-dark)", color: "var(--color-surface)", borderColor: "var(--color-primary-dark)", marginTop: 16, height: 48 }}>
               {loading ? <Loader2 className="spinner" size={20} /> : <Plus size={20} />} 
               {isArabic ? "نشر الإعلان" : "Publier l'annonce"}
             </button>

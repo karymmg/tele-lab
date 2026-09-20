@@ -14,12 +14,8 @@ const getInitialTheme = (): Theme => {
     if (stored === "light" || stored === "dark") {
       return stored;
     }
-    // Check system preference
-    if (window.matchMedia("(prefers-color-scheme: light)").matches) {
-      return "light";
-    }
   }
-  return "dark"; // Default to dark mode for this site
+  return "light"; // Default to light mode for this site per user request
 };
 
 export const useTheme = create<ThemeState>((set) => ({

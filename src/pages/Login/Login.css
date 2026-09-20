@@ -22,7 +22,7 @@
   width: 800px;
   height: 800px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 140, 255, 0.05) 0%, transparent 60%);
+  background: radial-gradient(circle, rgba(var(--color-primary-rgb), 0.05) 0%, transparent 60%);
   pointer-events: none;
   z-index: 0;
 }
@@ -113,7 +113,7 @@
 .tl-login-input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 16px rgba(0, 140, 255, 0.15);
+  box-shadow: 0 0 16px rgba(var(--color-primary-rgb), 0.15);
 }
 
 .tl-login-input:focus + .tl-login-icon,
@@ -187,17 +187,17 @@
 .tl-demo-btn:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
-  background: rgba(0, 140, 255, 0.05);
+  background: rgba(var(--color-primary-rgb), 0.05);
 }
 
 .tl-demo-btn--admin {
   grid-column: span 2;
-  border-color: rgba(0, 140, 255, 0.3);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
   color: var(--color-primary);
-  background: rgba(0, 140, 255, 0.05);
+  background: rgba(var(--color-primary-rgb), 0.05);
 }
 .tl-demo-btn--admin:hover {
-  background: rgba(0, 140, 255, 0.1);
+  background: rgba(var(--color-primary-rgb), 0.1);
 }
 
 @media (max-width: 600px) {

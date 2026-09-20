@@ -47,7 +47,7 @@ export function CartDrawer() {
                         {item.imageUrl ? (
                           <img src={item.imageUrl} alt={item.name} />
                         ) : (
-                          <ShoppingBag size={24} color="#123044" />
+                          <ShoppingBag size={24} color="var(--color-border)" />
                         )}
                       </div>
                       <div className="tl-cart-item-details">

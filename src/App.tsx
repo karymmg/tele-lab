@@ -10,6 +10,7 @@ import { CustomerDashboard } from "@/pages/CustomerDashboard/CustomerDashboard";
 import { AdminDashboard } from "@/pages/AdminDashboard/AdminDashboard";
 import { Shop } from "@/pages/Shop/Shop";
 import { AddOccasionForm } from "@/pages/Shop/AddOccasionForm";
+import { OccasionDetail } from "@/pages/Shop/OccasionDetail";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useHashScroll } from "@/hooks/useHashScroll";
 import { occasionStore } from "@/services/occasionStore";
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/demande" element={<RequestRepair />} />
         <Route path="/tracking" element={<Tracking />} />
         <Route path="/shop" element={<Shop />} />
+        <Route path="/shop/occasion/:id" element={<OccasionDetail />} />
         <Route 
           path="/shop/add-occasion" 
           element={

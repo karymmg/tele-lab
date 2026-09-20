@@ -101,7 +101,7 @@
 .tl-tracking-input:focus {
   outline: none;
   border-color: #008CFF;
-  box-shadow: 0 0 16px rgba(0, 140, 255, 0.2);
+  box-shadow: 0 0 16px rgba(var(--color-primary-rgb), 0.2);
 }
 
 .tl-tracking-btn {
@@ -121,7 +121,7 @@
 
 .tl-tracking-btn:hover:not(:disabled) {
   background: #00A3FF;
-  box-shadow: 0 0 20px rgba(0, 140, 255, 0.4);
+  box-shadow: 0 0 20px rgba(var(--color-primary-rgb), 0.4);
 }
 
 .tl-tracking-btn:disabled {
@@ -208,10 +208,10 @@
 .tl-dashboard-status-box {
   display: inline-block;
   padding: 24px 48px;
-  background: rgba(0, 140, 255, 0.05);
-  border: 1px solid rgba(0, 140, 255, 0.2);
+  background: rgba(var(--color-primary-rgb), 0.05);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
   border-radius: 16px;
-  box-shadow: 0 0 40px rgba(0, 140, 255, 0.1);
+  box-shadow: 0 0 40px rgba(var(--color-primary-rgb), 0.1);
 }
 
 .tl-status-label {
@@ -317,7 +317,7 @@
 
 .tl-step.is-done .tl-step-node {
   border-color: #008CFF;
-  background: rgba(0, 140, 255, 0.1);
+  background: rgba(var(--color-primary-rgb), 0.1);
   color: #008CFF;
 }
 
@@ -325,7 +325,7 @@
   border-color: #00A3FF;
   background: #008CFF;
   color: #fff;
-  box-shadow: 0 0 20px rgba(0, 140, 255, 0.4);
+  box-shadow: 0 0 20px rgba(var(--color-primary-rgb), 0.4);
 }
 
 /* Pulse for current step node */
@@ -335,7 +335,7 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  border: 1px solid rgba(0, 163, 255, 0.5);
+  border: 1px solid rgba(var(--color-primary-dark-rgb), 0.5);
   animation: pulse 2s infinite;
 }
 
@@ -474,7 +474,7 @@
 .tl-map-marker.is-active {
   border-color: #008CFF;
   background: #008CFF;
-  box-shadow: 0 0 16px rgba(0, 140, 255, 0.5);
+  box-shadow: 0 0 16px rgba(var(--color-primary-rgb), 0.5);
 }
 
 .tl-map-marker-label {
@@ -502,7 +502,7 @@
   align-items: center;
   justify-content: center;
   color: #fff;
-  box-shadow: 0 0 20px rgba(0, 163, 255, 0.4);
+  box-shadow: 0 0 20px rgba(var(--color-primary-dark-rgb), 0.4);
 }
 
 .tl-map-footer {
@@ -712,8 +712,8 @@
 }
 
 .tl-btn-outline:hover {
-  background: rgba(0, 140, 255, 0.1);
-  box-shadow: 0 0 16px rgba(0, 140, 255, 0.2);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  box-shadow: 0 0 16px rgba(var(--color-primary-rgb), 0.2);
 }
 
 /* ── Not Found State ─────────────────────────────────────────────────────── */
@@ -778,17 +778,17 @@
 }
 
 .tl-empty-feature:hover {
-  border-color: rgba(0, 140, 255, 0.3);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
   transform: translateY(-4px);
-  box-shadow: 0 8px 32px rgba(0, 140, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(var(--color-primary-rgb), 0.08);
 }
 
 .tl-empty-feature-icon {
   width: 56px;
   height: 56px;
   border-radius: 14px;
-  background: rgba(0, 140, 255, 0.08);
-  border: 1px solid rgba(0, 140, 255, 0.15);
+  background: rgba(var(--color-primary-rgb), 0.08);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -812,8 +812,8 @@
 .tl-empty-hint {
   text-align: center;
   padding: 20px 32px;
-  background: rgba(0, 140, 255, 0.04);
-  border: 1px solid rgba(0, 140, 255, 0.1);
+  background: rgba(var(--color-primary-rgb), 0.04);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
   border-radius: 12px;
 }
 

@@ -210,14 +210,14 @@ export function AdminDashboard() {
 
   const pieData = [
     { name: isArabic ? "جديدة" : "Nouvelles", value: newCount, color: "#f59e0b" },
-    { name: isArabic ? "في الإصلاح" : "En Réparation", value: inRepairCount, color: "#00A3FF" },
-    { name: isArabic ? "في التوصيل" : "En Livraison", value: inDeliveryCount, color: "#8b5cf6" },
-    { name: isArabic ? "مكتملة" : "Terminées", value: completedCount, color: "#10b981" }
+    { name: isArabic ? "في الإصلاح" : "En Réparation", value: inRepairCount, color: "var(--color-primary-dark)" },
+    { name: isArabic ? "في التوصيل" : "En Livraison", value: inDeliveryCount, color: "var(--color-purple)" },
+    { name: isArabic ? "مكتملة" : "Terminées", value: completedCount, color: "var(--color-success)" }
   ].filter(d => d.value > 0);
 
   const barData = [
-    { name: isArabic ? "الإجمالي" : "Total", montant: totalRevenue, fill: "#00A3FF" },
-    { name: isArabic ? "المُحصّل" : "Encaissé", montant: collectedRevenue, fill: "#10b981" },
+    { name: isArabic ? "الإجمالي" : "Total", montant: totalRevenue, fill: "var(--color-primary-dark)" },
+    { name: isArabic ? "المُحصّل" : "Encaissé", montant: collectedRevenue, fill: "var(--color-success)" },
     { name: isArabic ? "المتبقي" : "En attente", montant: pendingRevenue, fill: "#f59e0b" },
   ];
 
@@ -431,7 +431,7 @@ export function AdminDashboard() {
         <div className="tl-admin-header">
           <div className="tl-admin-title">
             <h1>
-              <Settings size={28} style={{ verticalAlign: "middle", marginRight: 12, color: "#008CFF" }} />
+              <Settings size={28} style={{ verticalAlign: "middle", marginRight: 12, color: "var(--color-primary)" }} />
               {isArabic ? "لوحة تحكم الإدارة" : "Back Office"}
             </h1>
             <p>{isArabic ? `متصل بـ: ${user?.displayName || "Admin"}` : `Connecté : ${user?.displayName || "Admin"}`}</p>
@@ -489,7 +489,7 @@ export function AdminDashboard() {
             {/* KPI Cards */}
             <div className="tl-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20, marginBottom: 32 }}>
               <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
-                <div style={{ background: "rgba(0,140,255,0.15)", color: "#00A3FF", padding: 16, borderRadius: 16 }}>
+                <div style={{ background: "rgba(var(--color-primary-rgb),0.15)", color: "var(--color-primary-dark)", padding: 16, borderRadius: 16 }}>
                   <Users size={28} />
                 </div>
                 <div>
@@ -499,7 +499,7 @@ export function AdminDashboard() {
               </div>
               
               <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
-                <div style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", padding: 16, borderRadius: 16 }}>
+                <div style={{ background: "rgba(16,185,129,0.15)", color: "var(--color-success)", padding: 16, borderRadius: 16 }}>
                   <ShoppingBag size={28} />
                 </div>
                 <div>
@@ -519,7 +519,7 @@ export function AdminDashboard() {
               </div>
 
               <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
-                <div style={{ background: "rgba(139,92,246,0.15)", color: "#8b5cf6", padding: 16, borderRadius: 16 }}>
+                <div style={{ background: "rgba(var(--color-purple-rgb),0.15)", color: "var(--color-purple)", padding: 16, borderRadius: 16 }}>
                   <DollarSign size={28} />
                 </div>
                 <div>
@@ -589,7 +589,7 @@ export function AdminDashboard() {
                       <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
                       <YAxis stroke="var(--color-text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
                       <RechartsTooltip 
-                        cursor={{ fill: "rgba(0,140,255,0.05)" }}
+                        cursor={{ fill: "rgba(var(--color-primary-rgb),0.05)" }}
                         contentStyle={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
                       />
                       <Bar dataKey="montant" radius={[6, 6, 0, 0]} maxBarSize={50}>
@@ -622,7 +622,7 @@ export function AdminDashboard() {
               <div className="tl-admin-filter">
                 <button 
                   className="tl-btn-manage" 
-                  style={{ height: 44, background: "rgba(0,140,255,0.1)", color: "#00A3FF", borderColor: "rgba(0,140,255,0.3)", marginRight: 12 }}
+                  style={{ height: 44, background: "rgba(var(--color-primary-rgb),0.1)", color: "var(--color-primary-dark)", borderColor: "rgba(var(--color-primary-rgb),0.3)", marginRight: 12 }}
                   onClick={() => setIsAddingRequest(true)}
                 >
                   <Plus size={16} /> {isArabic ? "إضافة طلب" : "Nouvelle Demande"}
@@ -669,7 +669,7 @@ export function AdminDashboard() {
                           </div>
                           <div style={{ marginTop: 4 }}>
                             {profileUsers.some(u => u.phone.replace(/[\s\-\+]/g, "") === req.customer.phone.replace(/[\s\-\+]/g, "")) ? (
-                              <span style={{ fontSize: "10px", color: "#10b981", background: "rgba(16,185,129,0.1)", padding: "2px 6px", borderRadius: 4 }}>Compte Actif</span>
+                              <span style={{ fontSize: "10px", color: "var(--color-success)", background: "rgba(16,185,129,0.1)", padding: "2px 6px", borderRadius: 4 }}>Compte Actif</span>
                             ) : (
                               <span style={{ fontSize: "10px", color: "#f59e0b", background: "rgba(245,158,11,0.1)", padding: "2px 6px", borderRadius: 4 }}>Invité</span>
                             )}
@@ -687,7 +687,7 @@ export function AdminDashboard() {
                         <td data-label="Prix">
                           {req.price ? (
                             <div>
-                              <strong style={{ color: "#00A3FF" }}>{req.price} DT</strong>
+                              <strong style={{ color: "var(--color-primary-dark)" }}>{req.price} DT</strong>
                               <div style={{ fontSize: "11px", color: "var(--color-text-secondary)" }}>
                                 {req.depositAmount} / {req.remainingAmount}
                               </div>
@@ -758,14 +758,14 @@ export function AdminDashboard() {
                   <tbody>
                     {shopOrders.filter(o => o.orderNumber.includes(search) || o.customerName.toLowerCase().includes(search.toLowerCase()) || o.customerPhone.includes(search)).map((order) => (
                       <tr key={order.id}>
-                        <td data-label="N° Commande" style={{ fontWeight: 600, color: "#10b981" }}>{order.orderNumber}</td>
+                        <td data-label="N° Commande" style={{ fontWeight: 600, color: "var(--color-success)" }}>{order.orderNumber}</td>
                         <td data-label="Date" style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
                           {new Date(order.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                         </td>
                         <td data-label="Client">
                           <div style={{ fontWeight: 600 }}>{order.customerName}</div>
                           <div style={{ fontSize: "12px" }}>
-                            <a href={`tel:${order.customerPhone}`} style={{ color: "#00A3FF" }}>{order.customerPhone}</a>
+                            <a href={`tel:${order.customerPhone}`} style={{ color: "var(--color-primary-dark)" }}>{order.customerPhone}</a>
                           </div>
                         </td>
                         <td data-label="Adresse" style={{ fontSize: "12px" }}>
@@ -775,7 +775,7 @@ export function AdminDashboard() {
                           {order.items.map(item => `${item.quantity}x ${item.name}`).join(", ")}
                         </td>
                         <td data-label="Total">
-                          <strong style={{ color: "#00A3FF" }}>{order.totalAmount.toFixed(2)} DT</strong>
+                          <strong style={{ color: "var(--color-primary-dark)" }}>{order.totalAmount.toFixed(2)} DT</strong>
                         </td>
                         <td data-label="Statut">
                           <select 
@@ -787,7 +787,7 @@ export function AdminDashboard() {
                               borderRadius: 4, 
                               background: order.status === 'delivered' ? "rgba(16,185,129,0.1)" : "var(--color-bg)", 
                               border: "1px solid var(--color-border)", 
-                              color: order.status === 'delivered' ? "#10b981" : "var(--color-text-secondary)",
+                              color: order.status === 'delivered' ? "var(--color-success)" : "var(--color-text-secondary)",
                               fontWeight: order.status === 'delivered' ? 600 : 400
                             }}
                           >
@@ -801,7 +801,7 @@ export function AdminDashboard() {
                         <td data-label="Action">
                           <button 
                             className="tl-btn-manage" 
-                            style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} 
+                            style={{ color: "var(--color-error)", borderColor: "rgba(239, 68, 68, 0.3)" }} 
                             onClick={() => {
                               if (confirm("Supprimer cette commande définitivement ?")) orderStore.deleteOrder(order.id);
                             }}
@@ -845,7 +845,7 @@ export function AdminDashboard() {
                 </span>
                 <button 
                   className="tl-btn-manage" 
-                  style={{ height: 40, background: "rgba(0,140,255,0.1)", color: "#00A3FF", borderColor: "rgba(0,140,255,0.3)" }}
+                  style={{ height: 40, background: "rgba(var(--color-primary-rgb),0.1)", color: "var(--color-primary-dark)", borderColor: "rgba(var(--color-primary-rgb),0.3)" }}
                   onClick={() => setIsAddingUser(true)}
                 >
                   <Plus size={16} /> {isArabic ? "إضافة مستخدم" : "Ajouter un utilisateur"}
@@ -881,10 +881,10 @@ export function AdminDashboard() {
                         )
                         .map((u) => {
                           const roleColors: Record<string, { bg: string; color: string; label: string }> = {
-                            admin: { bg: "rgba(239,68,68,0.1)", color: "#ef4444", label: "Admin" },
-                            customer: { bg: "rgba(16,185,129,0.1)", color: "#10b981", label: "Client" },
-                            technician: { bg: "rgba(0,140,255,0.1)", color: "#00A3FF", label: "Technicien" },
-                            driver: { bg: "rgba(139,92,246,0.1)", color: "#8b5cf6", label: "Livreur" },
+                            admin: { bg: "rgba(239,68,68,0.1)", color: "var(--color-error)", label: "Admin" },
+                            customer: { bg: "rgba(16,185,129,0.1)", color: "var(--color-success)", label: "Client" },
+                            technician: { bg: "rgba(var(--color-primary-rgb),0.1)", color: "var(--color-primary-dark)", label: "Technicien" },
+                            driver: { bg: "rgba(var(--color-purple-rgb),0.1)", color: "var(--color-purple)", label: "Livreur" },
                           };
                           const rc = roleColors[u.role] || roleColors.customer;
                           return (
@@ -938,7 +938,7 @@ export function AdminDashboard() {
                                   <button
                                     onClick={() => handleDeleteUser(u.id)}
                                     className="tl-btn-manage"
-                                    style={{ display: "inline-flex", color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }}
+                                    style={{ display: "inline-flex", color: "var(--color-error)", borderColor: "rgba(239, 68, 68, 0.3)" }}
                                     title="Supprimer l'utilisateur"
                                   >
                                     <Trash2 size={14} />
@@ -1055,7 +1055,7 @@ export function AdminDashboard() {
                   />
                 </div>
                 <div>
-                  <button type="submit" className="tl-btn-manage" style={{ height: 40, background: "rgba(0,140,255,0.1)", color: "#00A3FF", borderColor: "rgba(0,140,255,0.3)" }}>
+                  <button type="submit" className="tl-btn-manage" style={{ height: 40, background: "rgba(var(--color-primary-rgb),0.1)", color: "var(--color-primary-dark)", borderColor: "rgba(var(--color-primary-rgb),0.3)" }}>
                     <Plus size={16} /> Ajouter un livreur
                   </button>
                 </div>
@@ -1075,7 +1075,7 @@ export function AdminDashboard() {
                     </div>
                     <button 
                       onClick={() => handleDeleteDriver(driver.id)}
-                      style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", padding: 4 }}
+                      style={{ background: "none", border: "none", color: "var(--color-error)", cursor: "pointer", padding: 4 }}
                       title="Supprimer"
                     >
                       <X size={18} />
@@ -1085,11 +1085,11 @@ export function AdminDashboard() {
                   <div className="tl-driver-stats">
                     <div className="tl-driver-stat-box">
                       <div className="tl-driver-stat-label">En Course</div>
-                      <div className="tl-driver-stat-value" style={{ color: "#00A3FF" }}>{driver.activeDeliveries}</div>
+                      <div className="tl-driver-stat-value" style={{ color: "var(--color-primary-dark)" }}>{driver.activeDeliveries}</div>
                     </div>
                     <div className="tl-driver-stat-box">
                       <div className="tl-driver-stat-label">Terminées</div>
-                      <div className="tl-driver-stat-value" style={{ color: "#10b981" }}>{driver.completedDeliveries}</div>
+                      <div className="tl-driver-stat-value" style={{ color: "var(--color-success)" }}>{driver.completedDeliveries}</div>
                     </div>
                   </div>
                 </div>
@@ -1150,7 +1150,7 @@ export function AdminDashboard() {
                       />
                     </div>
                     <div>
-                      <button type="submit" className="tl-btn-manage" style={{ height: 40, background: "rgba(0,140,255,0.1)", color: "#00A3FF", borderColor: "rgba(0,140,255,0.3)" }}>
+                      <button type="submit" className="tl-btn-manage" style={{ height: 40, background: "rgba(var(--color-primary-rgb),0.1)", color: "var(--color-primary-dark)", borderColor: "rgba(var(--color-primary-rgb),0.3)" }}>
                         <Plus size={16} /> Ajouter une catégorie
                       </button>
                     </div>
@@ -1174,7 +1174,7 @@ export function AdminDashboard() {
                             <td style={{ color: "var(--color-text-secondary)" }}>{cat.icon || "—"}</td>
                             <td data-label="Action">
                               <button className="tl-btn-manage"
-                                style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteCategory(cat.id)}>
+                                style={{ color: "var(--color-error)", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteCategory(cat.id)}>
                                 <Trash2 size={14} /> Supprimer
                               </button>
                             </td>
@@ -1250,7 +1250,7 @@ export function AdminDashboard() {
                       />
                     </div>
                     <div>
-                      <button type="submit" className="tl-btn-manage" style={{ height: 40, background: "rgba(0,140,255,0.1)", color: "#00A3FF", borderColor: "rgba(0,140,255,0.3)" }}>
+                      <button type="submit" className="tl-btn-manage" style={{ height: 40, background: "rgba(var(--color-primary-rgb),0.1)", color: "var(--color-primary-dark)", borderColor: "rgba(var(--color-primary-rgb),0.3)" }}>
                         <Plus size={16} /> Ajouter Produit
                       </button>
                     </div>
@@ -1285,12 +1285,12 @@ export function AdminDashboard() {
                               </td>
                               <td data-label="Produit" style={{ fontWeight: 600 }}>{prod.name}</td>
                               <td style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>{cat?.name || "—"}</td>
-                              <td data-label="Prix"><strong style={{ color: "#10b981" }}>{prod.price} DT</strong></td>
-                              <td data-label="Stock">{prod.stock > 0 ? prod.stock : <span style={{ color: "#ef4444" }}>Rupture</span>}</td>
+                              <td data-label="Prix"><strong style={{ color: "var(--color-success)" }}>{prod.price} DT</strong></td>
+                              <td data-label="Stock">{prod.stock > 0 ? prod.stock : <span style={{ color: "var(--color-error)" }}>Rupture</span>}</td>
                               <td data-label="Vues">{prod.views || 0}</td>
                               <td data-label="Action">
                               <button className="tl-btn-manage"
-                                style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteProduct(prod.id)}>
+                                style={{ color: "var(--color-error)", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteProduct(prod.id)}>
                                   <Trash2 size={14} />
                                 </button>
                               </td>
@@ -1345,20 +1345,20 @@ export function AdminDashboard() {
                         <td>
                           <div style={{ fontWeight: 600 }}>{occ.model}</div>
                           <div style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>{occ.type} • {occ.brand}</div>
-                          <div style={{ color: "#00A3FF", fontSize: 12, marginTop: 4 }}>État: {occ.condition}</div>
+                          <div style={{ color: "var(--color-primary-dark)", fontSize: 12, marginTop: 4 }}>État: {occ.condition}</div>
                         </td>
                         <td>
                           <a href={`https://wa.me/${occ.whatsappNumber.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" style={{ color: "#25d366" }}>
                             {occ.whatsappNumber}
                           </a>
                         </td>
-                        <td data-label="Prix"><strong style={{ color: "#10b981" }}>{occ.price} DT</strong></td>
+                        <td data-label="Prix"><strong style={{ color: "var(--color-success)" }}>{occ.price} DT</strong></td>
                         <td data-label="Vues">{occ.views || 0}</td>
                         <td>
                           <select 
                             value={occ.status} 
                             onChange={(e) => occasionStore.updateOccasionStatus(occ.id, e.target.value as any)}
-                            style={{ padding: "4px 8px", fontSize: 12, borderRadius: 4, background: "var(--color-bg)", border: "1px solid var(--color-border)", color: occ.status === "active" ? "#10b981" : "var(--color-text-secondary)" }}
+                            style={{ padding: "4px 8px", fontSize: 12, borderRadius: 4, background: "var(--color-bg)", border: "1px solid var(--color-border)", color: occ.status === "active" ? "var(--color-success)" : "var(--color-text-secondary)" }}
                           >
                             <option value="active">Active</option>
                             <option value="pending">En attente</option>
@@ -1369,7 +1369,7 @@ export function AdminDashboard() {
                         <td>
                           <button 
                             className="tl-btn-manage" 
-                            style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)", padding: "6px 8px" }} 
+                            style={{ color: "var(--color-error)", borderColor: "rgba(239, 68, 68, 0.3)", padding: "6px 8px" }} 
                             onClick={() => {
                               if(confirm("Supprimer cette annonce définitivement ?")) occasionStore.deleteOccasion(occ.id);
                             }}
@@ -1403,7 +1403,7 @@ export function AdminDashboard() {
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button type="button" className="tl-modal-close" onClick={() => handleDeleteRequest(selectedReq.id)} title="Supprimer" style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }}>
+                  <button type="button" className="tl-modal-close" onClick={() => handleDeleteRequest(selectedReq.id)} title="Supprimer" style={{ color: "var(--color-error)", borderColor: "rgba(239, 68, 68, 0.3)" }}>
                     <Trash2 size={16} />
                   </button>
                   <button type="button" className="tl-modal-close" onClick={() => setSelectedReq(null)}>
@@ -1421,7 +1421,7 @@ export function AdminDashboard() {
                   </div>
                   <div>
                     <strong>Téléphone :</strong>{" "}
-                    <a href={`tel:${selectedReq.customer.phone}`} style={{ color: "#00A3FF" }}>
+                    <a href={`tel:${selectedReq.customer.phone}`} style={{ color: "var(--color-primary-dark)" }}>
                       {selectedReq.customer.phone}
                     </a>{" "}
                     <a

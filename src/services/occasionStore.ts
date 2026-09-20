@@ -12,6 +12,17 @@ let cachedOccasions: OccasionProduct[] = [];
 let totalSiteVisits = 0;
 
 function mapOccasion(dbObj: any): OccasionProduct {
+  const profile = dbObj.profiles;
+  let sellerName = "Utilisateur TeleLab";
+  let sellerVerified = false;
+  if (profile) {
+    const fullName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
+    if (fullName) sellerName = fullName;
+    if (profile.cin_number && String(profile.cin_number).trim().length > 0) {
+      sellerVerified = true;
+    }
+  }
+
   return {
     id: dbObj.id,
     sellerId: dbObj.seller_id,
@@ -20,24 +31,28 @@ function mapOccasion(dbObj: any): OccasionProduct {
     model: dbObj.model,
     description: dbObj.description,
     condition: dbObj.condition,
-    price: dbObj.price,
+    price: Number(dbObj.price),
     whatsappNumber: dbObj.whatsapp_number,
     photos: dbObj.photos || [],
-    views: dbObj.views,
+    views: dbObj.views || 0,
     status: dbObj.status,
     createdAt: dbObj.created_at,
+    sellerName,
+    sellerVerified,
   };
 }
 
 // Fetch Initial Data
 async function fetchOccasions() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("occasion_products")
-    .select("*")
+    .select("*, profiles:seller_id (first_name, last_name, cin_number)")
     .order("created_at", { ascending: false });
   if (data) {
     cachedOccasions = data.map(mapOccasion);
     notifyOccasionUpdate();
+  } else if (error) {
+    console.error("fetchOccasions error:", error);
   }
 }
 
@@ -74,6 +89,28 @@ fetchSiteVisits();
 export const occasionStore = {
   getOccasions(): OccasionProduct[] {
     return cachedOccasions;
+  },
+
+  getMyOccasions(userId: string): OccasionProduct[] {
+    if (!userId) return [];
+    return cachedOccasions.filter((item) => item.sellerId === userId);
+  },
+
+  getOccasionById(id: string): OccasionProduct | undefined {
+    return cachedOccasions.find((item) => item.id === id);
+  },
+
+  async fetchOccasionById(id: string): Promise<OccasionProduct | null> {
+    const cached = cachedOccasions.find((item) => item.id === id);
+    if (cached) return cached;
+    const { data, error } = await supabase
+      .from("occasion_products")
+      .select("*, profiles:seller_id (first_name, last_name, cin_number)")
+      .eq("id", id)
+      .maybeSingle();
+    if (data) return mapOccasion(data);
+    if (error) console.error("fetchOccasionById error:", error);
+    return null;
   },
 
   getTotalSiteVisits(): number {
@@ -120,11 +157,19 @@ export const occasionStore = {
   async updateOccasionStatus(id: string, status: OccasionStatus) {
     const { error } = await supabase.from("occasion_products").update({ status }).eq("id", id);
     if (error) throw new Error(error.message);
+    await fetchOccasions();
+  },
+
+  async updateOccasionPrice(id: string, newPrice: number) {
+    const { error } = await supabase.from("occasion_products").update({ price: newPrice }).eq("id", id);
+    if (error) throw new Error(error.message);
+    await fetchOccasions();
   },
 
   async deleteOccasion(id: string) {
     const { error } = await supabase.from("occasion_products").delete().eq("id", id);
     if (error) throw new Error(error.message);
+    await fetchOccasions();
   },
 
   // --- ANALYTICS ---
@@ -178,3 +223,27 @@ export function useSiteVisits() {
 
   return visits;
 }
+
+export function useMyOccasions(userId?: string) {
+  const [myOccasions, setMyOccasions] = useState<OccasionProduct[]>(() =>
+    userId ? occasionStore.getMyOccasions(userId) : []
+  );
+
+  useEffect(() => {
+    if (!userId) {
+      setMyOccasions([]);
+      return;
+    }
+    function handleUpdate() {
+      setMyOccasions(occasionStore.getMyOccasions(userId!));
+    }
+    handleUpdate();
+    window.addEventListener(OCCASION_EVENT_NAME, handleUpdate);
+    return () => {
+      window.removeEventListener(OCCASION_EVENT_NAME, handleUpdate);
+    };
+  }, [userId]);
+
+  return myOccasions;
+}
+
