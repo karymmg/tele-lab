@@ -27,6 +27,8 @@ export interface ShopOrder {
   totalAmount: number;
   status: OrderStatus;
   notes: string;
+  driverId?: string;
+  driverName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -53,6 +55,8 @@ function mapOrder(dbOrder: any): ShopOrder {
     totalAmount: dbOrder.total_amount,
     status: dbOrder.status as OrderStatus,
     notes: dbOrder.notes || "",
+    driverId: dbOrder.driver_id || undefined,
+    driverName: dbOrder.driver_name || undefined,
     createdAt: dbOrder.created_at,
     updatedAt: dbOrder.updated_at,
   };
@@ -144,6 +148,10 @@ export const orderStore = {
   },
 
   async updateStatus(id: string, newStatus: OrderStatus) {
+    // Find the order before updating to check previous status
+    const order = cachedOrders.find(o => o.id === id);
+    const previousStatus = order?.status;
+
     const { error } = await supabase
       .from("shop_orders")
       .update({ status: newStatus })
@@ -152,6 +160,26 @@ export const orderStore = {
     if (error) {
       console.error("Failed to update order status:", error);
       throw error;
+    }
+
+    // Deduct stock only when transitioning TO "delivered" (not already delivered)
+    if (newStatus === "delivered" && previousStatus !== "delivered" && order) {
+      for (const item of order.items) {
+        // Fetch current stock
+        const { data: product } = await supabase
+          .from("shop_products")
+          .select("stock")
+          .eq("id", item.id)
+          .single();
+
+        if (product) {
+          const newStock = Math.max(0, (product.stock || 0) - item.quantity);
+          await supabase
+            .from("shop_products")
+            .update({ stock: newStock })
+            .eq("id", item.id);
+        }
+      }
     }
   },
 
@@ -168,6 +196,18 @@ export const orderStore = {
 
     cachedOrders = cachedOrders.filter((o) => o.id !== id);
     notifyOrderUpdate();
+  },
+
+  async assignDriver(orderId: string, driverId: string, driverName: string) {
+    const { error } = await supabase
+      .from("shop_orders")
+      .update({ driver_id: driverId, driver_name: driverName })
+      .eq("id", orderId);
+
+    if (error) {
+      console.error("Failed to assign driver:", error);
+      throw error;
+    }
   },
 };
 

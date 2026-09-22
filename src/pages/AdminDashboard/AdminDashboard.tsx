@@ -8,7 +8,7 @@ import { useAuth } from "@/services/auth";
 import { Settings, Search, X, Clock, User, Phone, DollarSign, Truck, FileText, Users, Wrench, MessageCircle, Plus, Trash2, Printer, Store, Package, ShoppingBag, BarChart3, Shield, Eye } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { RepairRequestForm } from "@/components/forms/RepairRequestForm";
-import { useShopCategories, useShopProducts, shopStore } from "@/services/shopStore";
+import { useShopCategories, useShopProducts, useShopBrands, useShopModels, shopStore } from "@/services/shopStore";
 import { useOccasions, useSiteVisits, occasionStore } from "@/services/occasionStore";
 import { useShopOrders, orderStore } from "@/services/orderStore";
 import { supabase } from "@/services/supabase/client";
@@ -63,6 +63,10 @@ export function AdminDashboard() {
   const [customNote, setCustomNote] = useState<string>("");
   const [isAddingRequest, setIsAddingRequest] = useState(false);
   const [printType, setPrintType] = useState<"devis" | "facture" | null>(null);
+  
+  // Shop Print State
+  const [shopPrintType, setShopPrintType] = useState<"bon" | "facture" | null>(null);
+  const [shopPrintOrder, setShopPrintOrder] = useState<any | null>(null);
 
   // New driver form state
   const [newDriverName, setNewDriverName] = useState("");
@@ -72,10 +76,12 @@ export function AdminDashboard() {
   // --- SHOP STATE ---
   const categories = useShopCategories();
   const products = useShopProducts();
+  const brands = useShopBrands();
+  const models = useShopModels();
   const occasions = useOccasions();
   const siteVisits = useSiteVisits();
   const shopOrders = useShopOrders();
-  const [shopView, setShopView] = useState<"products" | "categories">("products");
+  const [shopView, setShopView] = useState<"products" | "categories" | "stock">("products");
   const [totalUsers, setTotalUsers] = useState(0);
   const [profileUsers, setProfileUsers] = useState<ProfileUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -177,9 +183,16 @@ export function AdminDashboard() {
   const [newProdName, setNewProdName] = useState("");
   const [newProdDesc, setNewProdDesc] = useState("");
   const [newProdPrice, setNewProdPrice] = useState("");
+  const [newProdCostPrice, setNewProdCostPrice] = useState("");
   const [newProdStock, setNewProdStock] = useState("");
-  const [newProdImg, setNewProdImg] = useState("");
   const [newProdCat, setNewProdCat] = useState("");
+  const [newProdBrand, setNewProdBrand] = useState("");
+  const [newProdModel, setNewProdModel] = useState("");
+  const [newProdSku, setNewProdSku] = useState("");
+  const [newProdImgType, setNewProdImgType] = useState<"url" | "file">("url");
+  const [newProdImgUrl, setNewProdImgUrl] = useState("");
+  const [newProdImgFile, setNewProdImgFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // --- REPAIRS LOGIC ---
   const totalCount = requests.length;
@@ -208,6 +221,26 @@ export function AdminDashboard() {
   });
   const pendingRevenue = totalRevenue - collectedRevenue;
 
+  // --- FINANCIAL STATS ---
+  let shopRevenue = 0;
+  let shopCost = 0;
+  let driverCountShop = 0;
+
+  shopOrders.filter(o => o.status === "delivered").forEach(order => {
+    shopRevenue += order.totalAmount;
+    if (order.driverId) driverCountShop++;
+    order.items.forEach(item => {
+      const p = products.find(prod => prod.id === item.id);
+      if (p && p.costPrice) {
+        shopCost += (p.costPrice * item.quantity);
+      }
+    });
+  });
+
+  const shopBenefice = shopRevenue - shopCost;
+  const totalBenefice = shopBenefice + totalRevenue;
+  const driverCost = (completedCount * 7) + (driverCountShop * 7); // Assuming 7 DT per delivery
+
   const pieData = [
     { name: isArabic ? "جديدة" : "Nouvelles", value: newCount, color: "#f59e0b" },
     { name: isArabic ? "في الإصلاح" : "En Réparation", value: inRepairCount, color: "var(--color-primary-dark)" },
@@ -216,9 +249,10 @@ export function AdminDashboard() {
   ].filter(d => d.value > 0);
 
   const barData = [
-    { name: isArabic ? "الإجمالي" : "Total", montant: totalRevenue, fill: "var(--color-primary-dark)" },
-    { name: isArabic ? "المُحصّل" : "Encaissé", montant: collectedRevenue, fill: "var(--color-success)" },
-    { name: isArabic ? "المتبقي" : "En attente", montant: pendingRevenue, fill: "#f59e0b" },
+    { name: "CA Total", montant: totalRevenue + shopRevenue, fill: "var(--color-primary-dark)" },
+    { name: "Marge", montant: totalBenefice, fill: "var(--color-success)" },
+    { name: "Coût Achat", montant: shopCost, fill: "#f59e0b" },
+    { name: "Frais Livreur", montant: driverCost, fill: "var(--color-error)" },
   ];
 
   const filteredRequests = requests.filter((req) => {
@@ -305,25 +339,104 @@ export function AdminDashboard() {
   async function handleAddProduct(e: React.FormEvent) {
     e.preventDefault();
     if (!newProdName.trim() || !newProdPrice || !newProdCat) return;
+    
+    setIsUploading(true);
+    let finalImageUrl = newProdImgUrl;
+    
     try {
+      if (newProdImgType === "file" && newProdImgFile) {
+        finalImageUrl = await shopStore.uploadProductImage(newProdImgFile);
+      }
+
       await shopStore.addProduct({
         categoryId: newProdCat,
+        brandId: newProdBrand || undefined,
+        modelId: newProdModel || undefined,
+        sku: newProdSku || undefined,
         name: newProdName,
         description: newProdDesc,
         price: parseFloat(newProdPrice),
+        costPrice: parseFloat(newProdCostPrice) || 0,
         stock: parseInt(newProdStock) || 0,
-        imageUrl: newProdImg,
+        imageUrl: finalImageUrl,
         active: true
       });
+      
       setNewProdName("");
       setNewProdDesc("");
       setNewProdPrice("");
+      setNewProdCostPrice("");
       setNewProdStock("");
-      setNewProdImg("");
-    } catch (err) {
-      alert("Erreur lors de l'ajout du produit");
+      setNewProdImgUrl("");
+      setNewProdImgFile(null);
+      setNewProdSku("");
+    } catch (err: any) {
+      alert("Erreur lors de l'ajout du produit: " + err.message);
+    } finally {
+      setIsUploading(false);
     }
   }
+
+  const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split("\n");
+      // Skip header (name,sku,price,cost_price,stock,categoryId,brandId,modelId,description,imageUrl)
+      let added = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const [name, sku, price, costPrice, stock, categoryId, brandId, modelId, description, imageUrl] = line.split(";");
+        
+        if (name && price && categoryId) {
+          try {
+            await shopStore.addProduct({
+              name,
+              sku: sku || undefined,
+              price: parseFloat(price) || 0,
+              costPrice: parseFloat(costPrice) || 0,
+              stock: parseInt(stock) || 0,
+              categoryId,
+              brandId: brandId || undefined,
+              modelId: modelId || undefined,
+              description: description || undefined,
+              imageUrl: imageUrl || undefined,
+              active: true
+            });
+            added++;
+          } catch (err) {
+            console.error("Erreur import ligne " + i, err);
+          }
+        }
+      }
+      alert(`Import terminé. ${added} produits ajoutés.`);
+      if (e.target) e.target.value = "";
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDownloadCsvTemplate = () => {
+    // Header for the template based on our expected parsing
+    const header = "Nom;SKU;Prix_Vente;Prix_Achat;Stock;ID_Categorie;ID_Marque;ID_Modele;Description;URL_Image\n";
+    // Example rows
+    const examples = [
+      "Cable iPhone Rapide;CBL-IPH-001;25.0;10.0;10;uuid-cat-1;uuid-brand-1;uuid-model-1;Cable de charge rapide pour iPhone;https://example.com/img1.webp",
+      "Ecouteurs AirPods;EAR-POD-001;150.0;80.0;5;uuid-cat-2;;;Ecouteurs sans fil bluetooth;",
+    ].join("\n");
+    
+    const blob = new Blob([header + examples], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "telelab_produits_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   async function handleDeleteProduct(id: string) {
     if(confirm("Supprimer ce produit ?")) {
@@ -354,6 +467,16 @@ export function AdminDashboard() {
     setTimeout(() => {
       window.print();
       setPrintType(null);
+    }, 100);
+  }
+
+  function handlePrintShop(type: "bon" | "facture", order: any) {
+    setShopPrintType(type);
+    setShopPrintOrder(order);
+    setTimeout(() => {
+      window.print();
+      setShopPrintType(null);
+      setShopPrintOrder(null);
     }, 100);
   }
 
@@ -486,117 +609,109 @@ export function AdminDashboard() {
         {/* ── TAB CONTENT: STATISTIQUES ───────────────────────────────────────── */}
         {activeTab === "stats" && (
           <div className="tl-tab-content fade-in">
-            {/* KPI Cards */}
-            <div className="tl-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20, marginBottom: 32 }}>
-              <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
-                <div style={{ background: "rgba(var(--color-primary-rgb),0.15)", color: "var(--color-primary-dark)", padding: 16, borderRadius: 16 }}>
-                  <Users size={28} />
-                </div>
-                <div>
-                  <div style={{ color: "var(--color-text-secondary)", fontSize: 13, fontWeight: 600, textTransform: "uppercase" }}>{isArabic ? "إجمالي المستخدمين" : "Total Utilisateurs"}</div>
-                  <div style={{ fontSize: 32, fontWeight: 800, color: "var(--color-text)", marginTop: 4 }}>{totalUsers}</div>
-                </div>
+            <div className="tl-glass-dashboard-wrapper">
+              <div className="tl-glass-dashboard-title">
+                {isArabic ? "لوحة الإحصائيات" : "TELE LAB DASHBOARD"}
               </div>
               
-              <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
-                <div style={{ background: "rgba(16,185,129,0.15)", color: "var(--color-success)", padding: 16, borderRadius: 16 }}>
-                  <ShoppingBag size={28} />
+              {/* KPI Row */}
+              <div className="tl-glass-kpi-row">
+                <div className="tl-glass-kpi-card">
+                  <div className="tl-glass-kpi-value">{totalUsers}</div>
+                  <div className="tl-glass-kpi-label">{isArabic ? "المستخدمين" : "TOTAL UTILISATEURS"}</div>
                 </div>
-                <div>
-                  <div style={{ color: "var(--color-text-secondary)", fontSize: 13, fontWeight: 600, textTransform: "uppercase" }}>{isArabic ? "طلبات المتجر" : "Commandes Boutique"}</div>
-                  <div style={{ fontSize: 32, fontWeight: 800, color: "var(--color-text)", marginTop: 4 }}>{shopOrders.length}</div>
+                <div className="tl-glass-kpi-card">
+                  <div className="tl-glass-kpi-value">{(totalRevenue + shopRevenue).toFixed(0)}</div>
+                  <div className="tl-glass-kpi-label">{isArabic ? "الإيرادات (DT)" : "CHIFFRE D'AFFAIRES (DT)"}</div>
                 </div>
-              </div>
-
-              <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
-                <div style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", padding: 16, borderRadius: 16 }}>
-                  <Wrench size={28} />
+                <div className="tl-glass-kpi-card">
+                  <div className="tl-glass-kpi-value">{requests.length}</div>
+                  <div className="tl-glass-kpi-label">{isArabic ? "الإصلاحات" : "TOTAL RÉPARATIONS"}</div>
                 </div>
-                <div>
-                  <div style={{ color: "var(--color-text-secondary)", fontSize: 13, fontWeight: 600, textTransform: "uppercase" }}>{isArabic ? "إجمالي الإصلاحات" : "Total Réparations"}</div>
-                  <div style={{ fontSize: 32, fontWeight: 800, color: "var(--color-text)", marginTop: 4 }}>{requests.length}</div>
-                </div>
-              </div>
-
-              <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
-                <div style={{ background: "rgba(var(--color-purple-rgb),0.15)", color: "var(--color-purple)", padding: 16, borderRadius: 16 }}>
-                  <DollarSign size={28} />
-                </div>
-                <div>
-                  <div style={{ color: "var(--color-text-secondary)", fontSize: 13, fontWeight: 600, textTransform: "uppercase" }}>{isArabic ? "إجمالي الإيرادات" : "Chiffre d'affaires"}</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: "var(--color-text)", marginTop: 4 }}>{totalRevenue.toFixed(0)} <span style={{ fontSize: 16, color: "var(--color-text-secondary)" }}>DT</span></div>
+                <div className="tl-glass-kpi-card">
+                  <div className="tl-glass-kpi-value">{shopOrders.length}</div>
+                  <div className="tl-glass-kpi-label">{isArabic ? "طلبات المتجر" : "COMMANDES BOUTIQUE"}</div>
                 </div>
               </div>
 
-              <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
-                <div style={{ background: "rgba(236,72,153,0.15)", color: "#ec4899", padding: 16, borderRadius: 16 }}>
-                  <Eye size={28} />
+              {/* Chart Row 1 */}
+              <div className="tl-glass-chart-row">
+                <div className="tl-glass-chart-card">
+                  <div className="tl-glass-chart-title">{isArabic ? "الإيرادات" : "BILAN FINANCIER"}</div>
+                  <div className="tl-glass-chart-content">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+                        <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" fontSize={11} tickLine={false} axisLine={false} />
+                        <YAxis stroke="rgba(255,255,255,0.5)" fontSize={11} tickLine={false} axisLine={false} />
+                        <RechartsTooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ background: "rgba(0,0,0,0.8)", border: "none", borderRadius: 8, color: "white" }} />
+                        <Bar dataKey="montant" radius={[4, 4, 0, 0]}>
+                          {barData.map((entry, index) => <Cell key={index} fill={entry.fill} />)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-                <div>
-                  <div style={{ color: "var(--color-text-secondary)", fontSize: 13, fontWeight: 600, textTransform: "uppercase" }}>{isArabic ? "زوار الموقع" : "Visiteurs du site"}</div>
-                  <div style={{ fontSize: 32, fontWeight: 800, color: "var(--color-text)", marginTop: 4 }}>{siteVisits}</div>
+                
+                <div className="tl-glass-chart-card">
+                  <div className="tl-glass-chart-title">{isArabic ? "الطلبات" : "RÉPARTITION DEMANDES"}</div>
+                  <div className="tl-glass-chart-content">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={pieData} innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value" stroke="none">
+                          {pieData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                        </Pie>
+                        <RechartsTooltip contentStyle={{ background: "rgba(0,0,0,0.8)", border: "none", borderRadius: 8, color: "white" }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
 
-              <div className="tl-kpi-card" style={{ display: "flex", alignItems: "center", gap: 20, padding: 24 }}>
-                <div style={{ background: "rgba(6,182,212,0.15)", color: "#06b6d4", padding: 16, borderRadius: 16 }}>
-                  <Package size={28} />
-                </div>
-                <div>
-                  <div style={{ color: "var(--color-text-secondary)", fontSize: 13, fontWeight: 600, textTransform: "uppercase" }}>{isArabic ? "منتجات المستعمل" : "Annonces Occasions"}</div>
-                  <div style={{ fontSize: 32, fontWeight: 800, color: "var(--color-text)", marginTop: 4 }}>{occasions.length}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Charts */}
-            <div className="tl-charts-grid">
-              <div className="tl-kpi-card tl-chart-card">
-                <h4 style={{ color: "var(--color-text)", fontSize: 16, marginBottom: 20 }}>
-                  {isArabic ? "توزيع الطلبات" : "Répartition des Demandes"}
-                </h4>
-                <div style={{ width: "100%", height: 220 }}>
-                  <ResponsiveContainer>
-                    <PieChart>
-                      <Pie data={pieData} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                        {pieData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
-                      </Pie>
-                      <RechartsTooltip 
-                        contentStyle={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
-                        itemStyle={{ color: "var(--color-text)" }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center", marginTop: 10 }}>
-                  {pieData.map(d => (
-                    <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--color-text-secondary)" }}>
-                      <span style={{ width: 10, height: 10, borderRadius: "50%", background: d.color }}></span>
-                      {d.name} ({d.value})
+              {/* Chart Row 2 */}
+              <div className="tl-glass-chart-row-3">
+                <div className="tl-glass-chart-card">
+                  <div className="tl-glass-chart-title">{isArabic ? "الأداء والهوامش" : "PERFORMANCES & MARGES"}</div>
+                  <div className="tl-glass-chart-content">
+                    <div style={{ display: "flex", justifyContent: "space-around", width: "100%", alignItems: "center" }}>
+                        <div style={{ textAlign: "center" }}>
+                          <div style={{ fontSize: 24, fontWeight: 700, color: "var(--color-success)" }}>{totalBenefice.toFixed(0)}</div>
+                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>Marge (DT)</div>
+                        </div>
+                        <div style={{ textAlign: "center" }}>
+                          <div style={{ fontSize: 24, fontWeight: 700, color: "#f59e0b" }}>{shopCost.toFixed(0)}</div>
+                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>Achat (DT)</div>
+                        </div>
+                        <div style={{ textAlign: "center" }}>
+                          <div style={{ fontSize: 24, fontWeight: 700, color: "var(--color-error)" }}>{driverCost.toFixed(0)}</div>
+                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>Livraison (DT)</div>
+                        </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
 
-              <div className="tl-kpi-card tl-chart-card">
-                <h4 style={{ color: "var(--color-text)", fontSize: 16, marginBottom: 20 }}>
-                  {isArabic ? "الإيرادات المالية" : "Bilan Financier (DT)"}
-                </h4>
-                <div style={{ width: "100%", height: 220 }}>
-                  <ResponsiveContainer>
-                    <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                      <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
-                      <YAxis stroke="var(--color-text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
-                      <RechartsTooltip 
-                        cursor={{ fill: "rgba(var(--color-primary-rgb),0.05)" }}
-                        contentStyle={{ background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
-                      />
-                      <Bar dataKey="montant" radius={[6, 6, 0, 0]} maxBarSize={50}>
-                        {barData.map((entry, index) => <Cell key={index} fill={entry.fill} />)}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="tl-glass-chart-card">
+                  <div className="tl-glass-chart-title">{isArabic ? "الزيارات" : "VISITES SITE"}</div>
+                  <div className="tl-glass-chart-content">
+                    <svg width="100%" height="100%" viewBox="0 0 100 100" style={{ position: "absolute" }}>
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="10" />
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="#38bdf8" strokeWidth="10" strokeDasharray="251" strokeDashoffset={251 - (251 * Math.min(siteVisits, 1000) / 1000)} strokeLinecap="round" transform="rotate(-90 50 50)" />
+                      <text x="50" y="50" textAnchor="middle" dominantBaseline="middle" className="tl-radial-center-text">{siteVisits}</text>
+                      <text x="50" y="70" textAnchor="middle" dominantBaseline="middle" className="tl-radial-center-label">VISITES</text>
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="tl-glass-chart-card">
+                  <div className="tl-glass-chart-title">{isArabic ? "المستعمل" : "OCCASIONS"}</div>
+                  <div className="tl-glass-chart-content">
+                    <svg width="100%" height="100%" viewBox="0 0 100 100" style={{ position: "absolute" }}>
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="10" />
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="#a855f7" strokeWidth="10" strokeDasharray="251" strokeDashoffset={251 - (251 * occasions.length / 50)} strokeLinecap="round" transform="rotate(-90 50 50)" />
+                      <text x="50" y="50" textAnchor="middle" dominantBaseline="middle" className="tl-radial-center-text">{occasions.length}</text>
+                      <text x="50" y="70" textAnchor="middle" dominantBaseline="middle" className="tl-radial-center-label">ANNONCES</text>
+                    </svg>
+                  </div>
                 </div>
               </div>
             </div>
@@ -751,6 +866,7 @@ export function AdminDashboard() {
                       <th>{isArabic ? "العنوان" : "Adresse"}</th>
                       <th>{isArabic ? "المنتجات" : "Produits"}</th>
                       <th>{isArabic ? "السعر" : "Total"}</th>
+                      <th>{isArabic ? "الموصل" : "Livreur"}</th>
                       <th>{isArabic ? "الحالة" : "Statut"}</th>
                       <th>{isArabic ? "إجراء" : "Action"}</th>
                     </tr>
@@ -777,6 +893,21 @@ export function AdminDashboard() {
                         <td data-label="Total">
                           <strong style={{ color: "var(--color-primary-dark)" }}>{order.totalAmount.toFixed(2)} DT</strong>
                         </td>
+                        <td data-label="Livreur">
+                          <select
+                            value={order.driverId || ""}
+                            onChange={(e) => {
+                              const d = drivers.find(drv => drv.id === e.target.value);
+                              if (d) orderStore.assignDriver(order.id, d.id, d.name);
+                            }}
+                            style={{ padding: "4px 8px", fontSize: 12, borderRadius: 4, background: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)" }}
+                          >
+                            <option value="">-- Non assigné --</option>
+                            {drivers.map(d => (
+                              <option key={d.id} value={d.id}>{d.name}</option>
+                            ))}
+                          </select>
+                        </td>
                         <td data-label="Statut">
                           <select 
                             value={order.status}
@@ -799,15 +930,23 @@ export function AdminDashboard() {
                           </select>
                         </td>
                         <td data-label="Action">
-                          <button 
-                            className="tl-btn-manage" 
-                            style={{ color: "var(--color-error)", borderColor: "rgba(239, 68, 68, 0.3)" }} 
-                            onClick={() => {
-                              if (confirm("Supprimer cette commande définitivement ?")) orderStore.deleteOrder(order.id);
-                            }}
-                          >
-                            <Trash2 size={14} /> Supprimer
-                          </button>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            <button className="tl-btn-manage" style={{ color: "var(--color-primary-dark)", borderColor: "rgba(var(--color-primary-rgb), 0.3)" }} onClick={() => handlePrintShop("bon", order)}>
+                              <Printer size={14} /> Bon
+                            </button>
+                            <button className="tl-btn-manage" style={{ color: "var(--color-success)", borderColor: "rgba(16, 185, 129, 0.3)" }} onClick={() => handlePrintShop("facture", order)}>
+                              <Printer size={14} /> Facture
+                            </button>
+                            <button 
+                              className="tl-btn-manage" 
+                              style={{ color: "var(--color-error)", borderColor: "rgba(239, 68, 68, 0.3)" }} 
+                              onClick={() => {
+                                if (confirm("Supprimer cette commande définitivement ?")) orderStore.deleteOrder(order.id);
+                              }}
+                            >
+                              <Trash2 size={14} /> Supprimer
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1122,6 +1261,13 @@ export function AdminDashboard() {
               >
                 <FileText size={16} /> Catégories
               </button>
+              <button 
+                className={`tl-tab-btn ${shopView === "stock" ? "is-active" : ""}`}
+                onClick={() => setShopView("stock")}
+                style={{ padding: "8px 16px", borderRadius: 8 }}
+              >
+                <Package size={16} /> 📦 Stocks
+              </button>
             </div>
 
             {shopView === "categories" && (
@@ -1192,7 +1338,36 @@ export function AdminDashboard() {
 
             {shopView === "products" && (
               <>
-                <div className="tl-admin-toolbar" style={{ alignItems: "flex-end", marginTop: 24 }}>
+                <div className="tl-admin-toolbar" style={{ alignItems: "flex-end", marginTop: 24, justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "center", width: "100%", flexWrap: "wrap" }}>
+                    <h3 style={{ margin: 0, fontSize: 16, flex: 1, minWidth: 200 }}>Gestion des Produits</h3>
+                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                      <button 
+                        type="button" 
+                        onClick={handleDownloadCsvTemplate}
+                        className="tl-btn-manage" 
+                        style={{ height: 36, background: "rgba(167, 176, 184, 0.1)", color: "var(--color-text)", borderColor: "var(--color-border)" }}
+                      >
+                        <FileText size={14} /> Télécharger Modèle CSV
+                      </button>
+                      
+                      <div style={{ position: "relative" }}>
+                        <input 
+                          type="file" 
+                          accept=".csv" 
+                          onChange={handleCsvImport} 
+                          style={{ position: "absolute", opacity: 0, width: "100%", height: "100%", cursor: "pointer", zIndex: 10 }}
+                          title="Importer CSV"
+                        />
+                        <button type="button" className="tl-btn-manage" style={{ height: 36, background: "rgba(var(--color-primary-rgb),0.1)", color: "var(--color-primary-dark)", borderColor: "rgba(var(--color-primary-rgb),0.3)" }}>
+                          <Plus size={14} /> Importer CSV
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="tl-admin-toolbar" style={{ alignItems: "flex-start", marginTop: 12, background: "rgba(var(--color-bg-rgb), 0.5)", padding: 20, borderRadius: 12, border: "1px solid var(--color-border)" }}>
                   <form onSubmit={handleAddProduct} style={{ display: "flex", gap: 16, flexWrap: "wrap", width: "100%" }}>
                     <div style={{ flex: 1, minWidth: 200 }}>
                       <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Nom du produit</label>
@@ -1217,6 +1392,17 @@ export function AdminDashboard() {
                         style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
                       />
                     </div>
+                    <div style={{ flex: 1, minWidth: 150 }}>
+                      <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Prix d'achat (DT)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder="0.00"
+                        value={newProdCostPrice}
+                        onChange={e => setNewProdCostPrice(e.target.value)}
+                        style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
+                      />
+                    </div>
                     <div style={{ flex: 1, minWidth: 100 }}>
                       <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Stock</label>
                       <input
@@ -1227,31 +1413,85 @@ export function AdminDashboard() {
                         style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
                       />
                     </div>
+                    <div style={{ flex: 1, minWidth: 150 }}>
+                      <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Marque</label>
+                      <input
+                        list="brands-list"
+                        placeholder="Ex: Apple"
+                        value={newProdBrand}
+                        onChange={e => setNewProdBrand(e.target.value)}
+                        style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
+                      />
+                      <datalist id="brands-list">
+                        {brands.map(b => <option key={b.id} value={b.name} />)}
+                      </datalist>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 150 }}>
+                      <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Modèle</label>
+                      <input
+                        list="models-list"
+                        placeholder="Ex: iPhone 15 Pro"
+                        value={newProdModel}
+                        onChange={e => setNewProdModel(e.target.value)}
+                        style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
+                      />
+                      <datalist id="models-list">
+                        {models.map(m => <option key={m.id} value={m.name} />)}
+                      </datalist>
+                    </div>
                     <div style={{ flex: 1, minWidth: 200 }}>
                       <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Catégorie</label>
                       <select
                         required
                         value={newProdCat}
                         onChange={e => setNewProdCat(e.target.value)}
-                        style={{ width: "100%" }}
+                        style={{ width: "100%", padding: "10px 16px" }}
                       >
                         <option value="">Sélectionner...</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </div>
-                    <div style={{ flex: 2, minWidth: 300 }}>
-                      <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Image URL</label>
-                      <input
-                        type="text"
-                        placeholder="https://..."
-                        value={newProdImg}
-                        onChange={e => setNewProdImg(e.target.value)}
-                        style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
+                    <div style={{ flex: "1 1 100%", minWidth: "100%" }}>
+                      <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Description</label>
+                      <textarea
+                        placeholder="Description du produit..."
+                        value={newProdDesc}
+                        onChange={e => setNewProdDesc(e.target.value)}
+                        style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)", minHeight: 60 }}
                       />
                     </div>
-                    <div>
-                      <button type="submit" className="tl-btn-manage" style={{ height: 40, background: "rgba(var(--color-primary-rgb),0.1)", color: "var(--color-primary-dark)", borderColor: "rgba(var(--color-primary-rgb),0.3)" }}>
-                        <Plus size={16} /> Ajouter Produit
+                    
+                    <div style={{ flex: 2, minWidth: 300 }}>
+                      <label style={{ display: "block", fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 6 }}>Image</label>
+                      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                        <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                          <input type="radio" checked={newProdImgType === "url"} onChange={() => setNewProdImgType("url")} /> URL
+                        </label>
+                        <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                          <input type="radio" checked={newProdImgType === "file"} onChange={() => setNewProdImgType("file")} /> Fichier Local
+                        </label>
+                      </div>
+                      
+                      {newProdImgType === "url" ? (
+                        <input
+                          type="text"
+                          placeholder="https://..."
+                          value={newProdImgUrl}
+                          onChange={e => setNewProdImgUrl(e.target.value)}
+                          style={{ width: "100%", padding: "10px 16px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
+                        />
+                      ) : (
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={e => setNewProdImgFile(e.target.files?.[0] || null)}
+                          style={{ width: "100%", padding: "8px", background: "var(--color-bg)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }}
+                        />
+                      )}
+                    </div>
+                    <div style={{ flex: "1 1 100%", display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+                      <button type="submit" disabled={isUploading} className="tl-btn-manage" style={{ height: 40, background: "rgba(var(--color-primary-rgb),0.1)", color: "var(--color-primary-dark)", borderColor: "rgba(var(--color-primary-rgb),0.3)", minWidth: 150 }}>
+                        {isUploading ? "Ajout en cours..." : <><Plus size={16} /> Ajouter Produit</>}
                       </button>
                     </div>
                   </form>
@@ -1264,9 +1504,12 @@ export function AdminDashboard() {
                         <tr>
                           <th>Image</th>
                           <th>Produit</th>
+                          <th>SKU</th>
                           <th>Catégorie</th>
-                          <th>Prix</th>
+                          <th>Prix (V)</th>
+                          <th>Prix (A)</th>
                           <th>Stock</th>
+                          <th>Vendus</th>
                           <th>Vues</th>
                           <th>Action</th>
                         </tr>
@@ -1275,7 +1518,7 @@ export function AdminDashboard() {
                         {products.map(prod => {
                           const cat = categories.find(c => c.id === prod.categoryId);
                           return (
-                            <tr key={prod.id}>
+                            <tr key={prod.id} style={{ background: prod.stock > 0 && prod.stock <= 5 ? "rgba(245, 158, 11, 0.05)" : undefined }}>
                               <td>
                                 {prod.imageUrl ? (
                                   <img src={prod.imageUrl} alt={prod.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6 }} />
@@ -1283,10 +1526,30 @@ export function AdminDashboard() {
                                   <div style={{ width: 40, height: 40, background: "var(--color-border)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={16} color="var(--color-text-secondary)" /></div>
                                 )}
                               </td>
-                              <td data-label="Produit" style={{ fontWeight: 600 }}>{prod.name}</td>
+                              <td data-label="Produit">
+                                <div style={{ fontWeight: 600 }}>{prod.name}</div>
+                                {(prod.brandId || prod.modelId) && (
+                                  <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>
+                                    {brands.find(b => b.id === prod.brandId)?.name || ""} {models.find(m => m.id === prod.modelId)?.name || ""}
+                                  </div>
+                                )}
+                              </td>
+                              <td data-label="SKU" style={{ fontSize: 12, fontFamily: "monospace" }}>{prod.sku || "—"}</td>
                               <td style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>{cat?.name || "—"}</td>
-                              <td data-label="Prix"><strong style={{ color: "var(--color-success)" }}>{prod.price} DT</strong></td>
-                              <td data-label="Stock">{prod.stock > 0 ? prod.stock : <span style={{ color: "var(--color-error)" }}>Rupture</span>}</td>
+                              <td data-label="Prix (V)"><strong style={{ color: "var(--color-success)" }}>{prod.price} DT</strong></td>
+                              <td data-label="Prix (A)"><strong style={{ color: "var(--color-text-secondary)" }}>{prod.costPrice || 0} DT</strong></td>
+                              <td data-label="Stock">
+                                {prod.stock > 0 ? (
+                                  <span style={{ color: prod.stock <= 5 ? "#f59e0b" : "var(--color-text)", fontWeight: prod.stock <= 5 ? 600 : 400 }}>
+                                    {prod.stock} {prod.stock <= 5 && "⚠️"}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: "var(--color-error)", fontWeight: 600 }}>Rupture</span>
+                                )}
+                              </td>
+                              <td data-label="Vendus" style={{ fontSize: 13 }}>
+                                {shopOrders.reduce((acc, order) => acc + (order.items.find(i => i.id === prod.id)?.quantity || 0), 0)}
+                              </td>
                               <td data-label="Vues">{prod.views || 0}</td>
                               <td data-label="Action">
                               <button className="tl-btn-manage"
@@ -1298,7 +1561,64 @@ export function AdminDashboard() {
                           );
                         })}
                         {products.length === 0 && (
-                          <tr><td colSpan={7} style={{ textAlign: "center", padding: 20, color: "var(--color-text-secondary)" }}>Aucun produit.</td></tr>
+                          <tr><td colSpan={9} style={{ textAlign: "center", padding: 20, color: "var(--color-text-secondary)" }}>Aucun produit.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {shopView === "stock" && (
+              <>
+                <div className="tl-admin-toolbar" style={{ alignItems: "flex-end", marginTop: 24 }}>
+                  <h3 style={{ margin: 0, fontSize: 16 }}>Suivi des Stocks</h3>
+                </div>
+                <div className="tl-admin-table-card">
+                  <div className="tl-table-wrapper">
+                    <table className="tl-admin-table">
+                      <thead>
+                        <tr>
+                          <th>SKU</th>
+                          <th>Produit</th>
+                          <th>Stock Initial / Ajouté</th>
+                          <th>Quantité Vendue</th>
+                          <th>Stock Restant Actuel</th>
+                          <th>Statut</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {products.map(prod => {
+                          const sold = shopOrders
+                            .filter(o => o.status === "delivered")
+                            .reduce((acc, order) => acc + (order.items.find(i => i.id === prod.id)?.quantity || 0), 0);
+                          
+                          return (
+                            <tr key={prod.id} style={{ background: prod.stock > 0 && prod.stock <= 5 ? "rgba(245, 158, 11, 0.05)" : undefined }}>
+                              <td data-label="SKU" style={{ fontSize: 12, fontFamily: "monospace" }}>{prod.sku || "—"}</td>
+                              <td data-label="Produit" style={{ fontWeight: 600 }}>{prod.name}</td>
+                              <td data-label="Initial">{prod.stock + sold}</td>
+                              <td data-label="Vendus" style={{ color: "var(--color-success)", fontWeight: 600 }}>{sold}</td>
+                              <td data-label="Restant" style={{ fontWeight: 600 }}>
+                                {prod.stock > 0 ? (
+                                  <span style={{ color: prod.stock <= 5 ? "#f59e0b" : "var(--color-text)" }}>
+                                    {prod.stock} {prod.stock <= 5 && "⚠️"}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: "var(--color-error)" }}>0</span>
+                                )}
+                              </td>
+                              <td data-label="Statut">
+                                {prod.stock > 5 && <span style={{ color: "var(--color-success)", fontSize: 12, background: "rgba(16,185,129,0.1)", padding: "2px 6px", borderRadius: 4 }}>En stock</span>}
+                                {prod.stock > 0 && prod.stock <= 5 && <span style={{ color: "#f59e0b", fontSize: 12, background: "rgba(245,158,11,0.1)", padding: "2px 6px", borderRadius: 4 }}>Stock Faible</span>}
+                                {prod.stock === 0 && <span style={{ color: "var(--color-error)", fontSize: 12, background: "rgba(239,68,68,0.1)", padding: "2px 6px", borderRadius: 4 }}>Rupture</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {products.length === 0 && (
+                          <tr><td colSpan={6} style={{ textAlign: "center", padding: 20, color: "var(--color-text-secondary)" }}>Aucun produit.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1695,6 +2015,65 @@ export function AdminDashboard() {
             <div className="tl-print-footer">
               <p>Merci de votre confiance.</p>
               <p>Tele Lab garantit ses réparations pendant 3 mois.</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── PRINT TEMPLATE FOR SHOP ORDERS ── */}
+        {shopPrintType && shopPrintOrder && (
+          <div className="tl-print-container">
+            <div className="tl-print-header">
+              <h1>TELE LAB</h1>
+              <p>by Telephonic Pro</p>
+              <br />
+              <p>Adresse: Tunis, Tunisie</p>
+              <p>Tél: +216 55 123 456</p>
+            </div>
+            
+            <div className="tl-print-title">
+              <h2>{shopPrintType === "bon" ? "BON DE LIVRAISON" : "FACTURE"}</h2>
+              <p>N° Commande : <strong>{shopPrintOrder.orderNumber}</strong></p>
+              <p>Date : {new Date(shopPrintOrder.createdAt).toLocaleDateString("fr-FR", { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+            </div>
+
+            <div className="tl-print-client">
+              <h3>Client</h3>
+              <p><strong>Nom:</strong> {shopPrintOrder.customerName}</p>
+              <p><strong>Téléphone:</strong> {shopPrintOrder.customerPhone}</p>
+              <p><strong>Adresse:</strong> {shopPrintOrder.customerAddress}, {shopPrintOrder.customerCity} ({shopPrintOrder.customerGovernorate})</p>
+              {shopPrintOrder.driverName && (
+                <p><strong>Livreur assigné:</strong> {shopPrintOrder.driverName}</p>
+              )}
+            </div>
+
+            <table className="tl-print-table">
+              <thead>
+                <tr>
+                  <th>Article</th>
+                  <th>Quantité</th>
+                  <th>Prix Unitaire</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shopPrintOrder.items.map((item: any) => (
+                  <tr key={item.id}>
+                    <td>{item.name}</td>
+                    <td>{item.quantity}</td>
+                    <td>{item.price.toFixed(2)} DT</td>
+                    <td>{(item.price * item.quantity).toFixed(2)} DT</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="tl-print-totals">
+              <p><strong>Total TTC :</strong> {shopPrintOrder.totalAmount.toFixed(2)} DT</p>
+            </div>
+
+            <div className="tl-print-footer">
+              <p>Merci pour votre commande sur Tele Lab.</p>
+              <p>En cas de problème, veuillez nous contacter au +216 55 123 456.</p>
             </div>
           </div>
         )}

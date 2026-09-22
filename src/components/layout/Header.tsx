@@ -3,9 +3,12 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/services/auth";
-import { LogOut, User, Menu, X, Sun, Moon, ShoppingCart } from "lucide-react";
+import { LogOut, User, Menu, X, Sun, Moon, ShoppingCart, Search } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useCartStore } from "@/services/cartStore";
+import { useShopProducts } from "@/services/shopStore";
+import { useShopOrders } from "@/services/orderStore";
+import { useRepairRequests } from "@/services/store";
 import "./Header.css";
 
 export function Header() {
@@ -16,9 +19,14 @@ export function Header() {
   const isArabic = i18n.language === "ar";
   const { theme, toggleTheme } = useTheme();
   const { toggleCart, getTotalItems } = useCartStore();
+  const products = useShopProducts();
+  const orders = useShopOrders();
+  const repairs = useRepairRequests();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   function switchLanguage(lng: "fr" | "ar") {
     i18n.changeLanguage(lng);
@@ -64,10 +72,23 @@ export function Header() {
       { to: "/#services", label: t("nav.services") },
       { to: "/#how-it-works", label: t("nav.howItWorks") },
       { to: "/#pricing", label: t("nav.pricing") },
-      { to: "/tracking", label: t("nav.track") },
-      { to: "/#contact", label: t("nav.contact") },
     ];
   }
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    
+    if (user?.role === "admin") {
+      // Pour l'admin, on le redirige vers le dashboard avec un paramètre de recherche
+      navigate(`/dashboard/admin?q=${encodeURIComponent(searchQuery)}`);
+    } else {
+      // Pour client/visiteur, on filtre la boutique
+      navigate(`/shop?q=${encodeURIComponent(searchQuery)}`);
+    }
+    setSearchOpen(false);
+    setSearchQuery("");
+  };
 
   return (
     <header className={`tl-header ${scrolled ? "is-scrolled" : ""}`}>
@@ -92,6 +113,95 @@ export function Header() {
 
         {/* Actions */}
         <div className="tl-header__actions">
+          {/* Smart Search Bar */}
+          <form 
+            className={`tl-header__search ${searchOpen ? "is-open" : ""}`} 
+            onSubmit={handleSearchSubmit}
+            onMouseLeave={() => { if(!searchQuery) setSearchOpen(false); }}
+          >
+            <button 
+              type="button" 
+              className="tl-header__theme-toggle" 
+              onClick={() => setSearchOpen(true)}
+              onMouseEnter={() => setSearchOpen(true)}
+              aria-label="Rechercher"
+            >
+              <Search size={16} />
+            </button>
+            <input 
+              type="text" 
+              placeholder={user?.role === "admin" ? "Chercher produit, client, cmd..." : "Chercher un produit..."}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              autoFocus={searchOpen}
+            />
+            {/* Search Dropdown */}
+            {searchOpen && searchQuery && (
+              <div className="tl-header__search-dropdown">
+                {(() => {
+                  const query = searchQuery.toLowerCase();
+                  
+                  // For everyone: Products
+                  const matchedProducts = products.filter(p => p.name.toLowerCase().includes(query) || (p.sku && p.sku.toLowerCase().includes(query))).slice(0, 5);
+                  
+                  // For admin: Orders & Repairs
+                  let matchedOrders: any[] = [];
+                  let matchedRepairs: any[] = [];
+                  if (user?.role === "admin") {
+                    matchedOrders = orders.filter(o => o.orderNumber.toLowerCase().includes(query) || o.customerName.toLowerCase().includes(query)).slice(0, 3);
+                    matchedRepairs = repairs.filter(r => r.trackingNumber.toLowerCase().includes(query) || r.customer.phone.includes(query)).slice(0, 3);
+                  }
+
+                  const hasResults = matchedProducts.length > 0 || matchedOrders.length > 0 || matchedRepairs.length > 0;
+
+                  return (
+                    <>
+                      {matchedProducts.length > 0 && (
+                        <div className="tl-search-section">
+                          <div className="tl-search-section-title">Produits</div>
+                          {matchedProducts.map(p => (
+                            <Link key={p.id} to={`/shop/${p.id}`} className="tl-search-item" onClick={() => { setSearchOpen(false); setSearchQuery(""); }}>
+                              <div className="tl-search-item-title">{p.name}</div>
+                              <div className="tl-search-item-sub">{p.price} DT</div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {user?.role === "admin" && matchedOrders.length > 0 && (
+                        <div className="tl-search-section">
+                          <div className="tl-search-section-title">Commandes</div>
+                          {matchedOrders.map(o => (
+                            <Link key={o.id} to={`/dashboard/admin?tab=orders&q=${o.orderNumber}`} className="tl-search-item" onClick={() => { setSearchOpen(false); setSearchQuery(""); }}>
+                              <div className="tl-search-item-title">{o.orderNumber} - {o.customerName}</div>
+                              <div className="tl-search-item-sub">{o.status}</div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+
+                      {user?.role === "admin" && matchedRepairs.length > 0 && (
+                        <div className="tl-search-section">
+                          <div className="tl-search-section-title">Réparations</div>
+                          {matchedRepairs.map(r => (
+                            <Link key={r.id} to={`/dashboard/admin?tab=repairs&q=${r.trackingNumber}`} className="tl-search-item" onClick={() => { setSearchOpen(false); setSearchQuery(""); }}>
+                              <div className="tl-search-item-title">{r.trackingNumber}</div>
+                              <div className="tl-search-item-sub">{r.brand} {r.model}</div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+
+                      {!hasResults && (
+                        <div className="tl-search-no-results">Aucun résultat trouvé pour "{searchQuery}"</div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </form>
+
           {/* Theme Toggle */}
           <button
             className="tl-header__theme-toggle"

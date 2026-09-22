@@ -1,28 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://tele-lab.com/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
+    <loc>https://telephonic-pro.tn/</loc>
   </url>
   <url>
-    <loc>https://tele-lab.com/shop</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
+    <loc>https://telephonic-pro.tn/products</loc>
   </url>
   <url>
-    <loc>https://tele-lab.com/shop/occasions</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
+    <loc>https://telephonic-pro.tn/shop/category/anti-casse-films/qsdqsd</loc>
   </url>
   <url>
-    <loc>https://tele-lab.com/tracking</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <loc>https://telephonic-pro.tn/category/cages-coques</loc>
   </url>
   <url>
-    <loc>https://tele-lab.com/login</loc>
-    <changefreq>yearly</changefreq>
-    <priority>0.5</priority>
+    <loc>https://telephonic-pro.tn/category/chargeurs</loc>
+  </url>
+  <url>
+    <loc>https://telephonic-pro.tn/category/cbles</loc>
+  </url>
+  <url>
+    <loc>https://telephonic-pro.tn/category/anti-casse-films</loc>
+  </url>
+  <url>
+    <loc>https://telephonic-pro.tn/category/airpods-couteurs</loc>
+  </url>
+  <url>
+    <loc>https://telephonic-pro.tn/category/enceintes-speakers</loc>
   </url>
 </urlset>
