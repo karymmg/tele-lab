@@ -1,4 +1,10 @@
 User-agent: *
 Allow: /
 
+Disallow: /admin
+Disallow: /login
+Disallow: /signup
+Disallow: /dashboard
+Disallow: /search
+
 Sitemap: https://telephonic-pro.tn/sitemap.xml

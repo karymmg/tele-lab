@@ -16,6 +16,7 @@ function mapCategory(dbCat: any): ShopCategory {
   return {
     id: dbCat.id,
     name: dbCat.name,
+    slug: dbCat.slug || (dbCat.name ? dbCat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : undefined),
     icon: dbCat.icon,
     active: dbCat.active,
     createdAt: dbCat.created_at,
@@ -27,6 +28,7 @@ function mapProduct(dbProd: any): ShopProduct {
     id: dbProd.id,
     categoryId: dbProd.category_id,
     name: dbProd.name,
+    slug: dbProd.slug || (dbProd.name ? dbProd.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : undefined),
     description: dbProd.description,
     price: dbProd.price,
     stock: dbProd.stock,

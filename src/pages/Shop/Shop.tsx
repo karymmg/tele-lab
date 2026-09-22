@@ -26,6 +26,14 @@ export function Shop() {
     occasionStore.incrementViews(id, isOccasion);
     if (isOccasion) {
       navigate(`/shop/occasion/${id}`);
+    } else {
+      const prod = products.find(p => p.id === id);
+      if (prod) {
+        const cat = categories.find(c => c.id === prod.categoryId);
+        const catSlug = cat?.slug || 'category';
+        const prodSlug = prod.slug || id;
+        navigate(`/shop/category/${catSlug}/${prodSlug}`);
+      }
     }
   };
 
