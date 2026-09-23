@@ -139,6 +139,7 @@ export const orderStore = {
 
     // Since RLS prevents guests from selecting their own inserted row,
     // we return the locally constructed order instead of relying on .select()
+    await fetchAllOrders();
     return mapOrder({
       id: "temp-" + Date.now(),
       created_at: new Date().toISOString(),
@@ -181,6 +182,7 @@ export const orderStore = {
         }
       }
     }
+    await fetchAllOrders();
   },
 
   async deleteOrder(id: string) {
@@ -196,6 +198,7 @@ export const orderStore = {
 
     cachedOrders = cachedOrders.filter((o) => o.id !== id);
     notifyOrderUpdate();
+    await fetchAllOrders();
   },
 
   async assignDriver(orderId: string, driverId: string, driverName: string) {
@@ -208,6 +211,7 @@ export const orderStore = {
       console.error("Failed to assign driver:", error);
       throw error;
     }
+    await fetchAllOrders();
   },
 };
 

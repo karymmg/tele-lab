@@ -1084,3 +1084,404 @@
     color: #666;
   }
 }
+
+
+/* ── Dashboard structure and responsive overview ─────────────────────────── */
+.tl-admin-page > .container {
+  max-width: 1480px;
+}
+
+.tl-admin-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 18px;
+}
+
+.tl-admin-title h1 {
+  margin: 0;
+}
+
+.tl-admin-tabs {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  align-items: stretch;
+}
+
+.tl-tab-btn {
+  justify-content: center;
+  min-width: 0;
+  padding-inline: 12px;
+}
+
+.tl-glass-dashboard-wrapper {
+  padding: clamp(20px, 3vw, 36px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
+}
+
+.tl-glass-dashboard-heading,
+.tl-glass-section-heading,
+.tl-glass-kpi-row,
+.tl-glass-chart-row,
+.tl-glass-chart-row-3 {
+  position: relative;
+  z-index: 1;
+}
+
+.tl-glass-dashboard-heading {
+  margin-bottom: 28px;
+}
+
+.tl-glass-dashboard-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: #7dd3fc;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.tl-glass-dashboard-title {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(24px, 3vw, 32px);
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  text-align: start;
+  text-transform: none;
+}
+
+.tl-glass-dashboard-subtitle {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.tl-glass-kpi-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 30px;
+}
+
+.tl-glass-kpi-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 18px;
+  text-align: start;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.tl-glass-kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.075);
+}
+
+.tl-glass-kpi-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  margin-bottom: 14px;
+  border-radius: 11px;
+  background: rgba(125, 211, 252, 0.12);
+  color: #7dd3fc;
+}
+
+.tl-glass-kpi-icon.is-revenue {
+  background: rgba(52, 211, 153, 0.13);
+  color: #6ee7b7;
+}
+
+.tl-glass-kpi-icon.is-repairs {
+  background: rgba(251, 191, 36, 0.13);
+  color: #fcd34d;
+}
+
+.tl-glass-kpi-icon.is-orders {
+  background: rgba(196, 181, 253, 0.13);
+  color: #c4b5fd;
+}
+
+.tl-glass-kpi-value {
+  margin-bottom: 6px;
+  font-size: clamp(25px, 3vw, 32px);
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.tl-glass-kpi-label {
+  color: rgba(255, 255, 255, 0.67);
+  font-size: 10px;
+  line-height: 1.45;
+  letter-spacing: 0.065em;
+}
+
+.tl-glass-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin: 0 0 14px;
+}
+
+.tl-glass-section-heading h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.tl-glass-section-heading p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 12px;
+}
+
+.tl-glass-section-heading-secondary {
+  margin-top: 28px;
+}
+
+.tl-glass-chart-row {
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+  gap: 14px;
+  margin-bottom: 0;
+}
+
+.tl-glass-chart-row-3 {
+  grid-template-columns: minmax(0, 1.45fr) repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 0;
+}
+
+.tl-glass-chart-card {
+  min-width: 0;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.tl-glass-chart-title {
+  margin-bottom: 12px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  letter-spacing: 0.075em;
+  text-align: start;
+}
+
+.tl-glass-chart-content {
+  min-width: 0;
+}
+
+@media (max-width: 1120px) and (min-width: 769px) {
+  .tl-admin-tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .tl-glass-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tl-glass-chart-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tl-glass-chart-row-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tl-glass-chart-row-3 .tl-glass-chart-card:first-child {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .tl-admin-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0;
+    margin-bottom: 0;
+    padding: 12px 16px 0;
+    border-bottom: none;
+  }
+
+  .tl-admin-tabs {
+    display: flex;
+    width: calc(100% + 32px);
+    grid-template-columns: none;
+    gap: 4px;
+    margin: 0 -16px;
+    padding: 6px 16px 0;
+  }
+
+  .tl-tab-btn {
+    justify-content: flex-start;
+    padding-inline: 16px;
+  }
+
+  .tl-glass-dashboard-wrapper {
+    padding: 20px 16px;
+    border-radius: 18px;
+  }
+
+  .tl-glass-dashboard-heading {
+    margin-bottom: 22px;
+  }
+
+  .tl-glass-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .tl-glass-kpi-card {
+    padding: 14px;
+  }
+
+  .tl-glass-kpi-icon {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 11px;
+  }
+
+  .tl-glass-chart-row,
+  .tl-glass-chart-row-3 {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .tl-glass-chart-row-3 .tl-glass-chart-card:first-child {
+    grid-column: auto;
+  }
+
+  .tl-glass-chart-card {
+    padding: 15px;
+  }
+
+  .tl-glass-chart-content {
+    min-height: 190px;
+  }
+
+  .tl-glass-section-heading-secondary {
+    margin-top: 24px;
+  }
+}
+
+@media (max-width: 420px) {
+  .tl-admin-header {
+    padding-inline: 10px;
+  }
+
+  .tl-admin-tabs {
+    width: calc(100% + 20px);
+    margin-inline: -10px;
+    padding-inline: 10px;
+  }
+
+  .tl-glass-dashboard-wrapper {
+    padding: 18px 12px;
+  }
+
+  .tl-glass-kpi-row {
+    gap: 8px;
+  }
+
+  .tl-glass-kpi-card {
+    padding: 12px;
+  }
+
+  .tl-glass-kpi-label {
+    font-size: 9px;
+  }
+}
+
+
+.tl-product-reference-fields { display: grid; gap: 4px; margin-top: 7px; min-width: 150px; }
+.tl-product-reference-fields select { width: 100%; padding: 4px 7px; font-size: 11px; color: var(--color-text-secondary); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 6px; }
+
+
+/* Theme-aware analytics surfaces */
+.tl-glass-dashboard-wrapper {
+  background: linear-gradient(135deg, var(--color-bg-secondary) 0%, var(--color-bg) 100%);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+.tl-glass-dashboard-title,
+.tl-glass-kpi-value,
+.tl-glass-chart-title,
+.tl-glass-section-heading h2 {
+  color: var(--color-text);
+}
+.tl-glass-dashboard-eyebrow,
+.tl-glass-kpi-icon {
+  color: var(--color-primary-dark);
+}
+.tl-glass-dashboard-subtitle,
+.tl-glass-kpi-label,
+.tl-glass-section-heading p {
+  color: var(--color-text-secondary);
+}
+.tl-glass-pane,
+.tl-glass-kpi-card,
+.tl-glass-chart-card {
+  background: rgba(var(--color-text-rgb), 0.045);
+  border-color: rgba(var(--color-text-rgb), 0.1);
+}
+.tl-glass-kpi-icon {
+  background: rgba(var(--color-primary-rgb), 0.12);
+}
+.tl-glass-kpi-icon.is-revenue { color: #34d399; background: rgba(52, 211, 153, 0.13); }
+.tl-glass-kpi-icon.is-repairs { color: #fbbf24; background: rgba(251, 191, 36, 0.13); }
+.tl-glass-kpi-icon.is-orders { color: #c4b5fd; background: rgba(196, 181, 253, 0.13); }
+
+.tl-admin-tabs {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border);
+}
+.tl-tab-btn {
+  position: relative;
+  transform-origin: center;
+  transition: color 180ms ease, background-color 220ms ease, box-shadow 220ms ease, transform 180ms var(--ease-spring);
+}
+.tl-tab-btn:hover { transform: translateY(-1px); }
+.tl-tab-btn:active { transform: scale(0.97); }
+.tl-tab-btn.is-active {
+  animation: tl-admin-tab-enter 320ms var(--ease-spring);
+  box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.16), 0 4px 12px rgba(var(--color-primary-rgb), 0.1);
+}
+.tl-tab-btn.is-active svg { animation: tl-admin-tab-icon 360ms var(--ease-spring); }
+
+@keyframes tl-admin-tab-enter {
+  from { opacity: 0.72; transform: translateY(3px) scale(0.975); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes tl-admin-tab-icon {
+  0% { transform: scale(0.82) rotate(-12deg); }
+  65% { transform: scale(1.18) rotate(5deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tl-tab-btn,
+  .tl-tab-btn.is-active,
+  .tl-tab-btn.is-active svg { animation: none !important; transition: none !important; }
+}
+
+
+/* Make chart axes and compact SVG summaries readable in either theme. */
+.tl-glass-dashboard-wrapper .recharts-cartesian-axis-tick-value { fill: var(--color-text-secondary) !important; }
+.tl-glass-dashboard-wrapper .recharts-cartesian-axis line { stroke: var(--color-border) !important; }
+.tl-radial-center-text { fill: var(--color-text); font-size: 13px; font-weight: 700; }
+.tl-radial-center-label { fill: var(--color-text-secondary); font-size: 6px; }
+[data-theme="light"] .tl-glass-kpi-icon.is-revenue { color: #047857; background: rgba(4, 120, 87, 0.1); }
+[data-theme="light"] .tl-glass-kpi-icon.is-repairs { color: #a16207; background: rgba(161, 98, 7, 0.1); }
+[data-theme="light"] .tl-glass-kpi-icon.is-orders { color: #6d28d9; background: rgba(109, 40, 217, 0.1); }

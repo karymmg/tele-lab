@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useShopCategories, useShopProducts, shopStore } from "@/services/shopStore";
+import { useShopCategories, useShopProducts, useShopBrands, useShopModels, shopStore } from "@/services/shopStore";
 import { useOccasions, occasionStore } from "@/services/occasionStore";
 import { useAuth } from "@/services/auth";
 import { useCartStore } from "@/services/cartStore";
 import { Search, Store, ShoppingBag, Package, Plus, UserCheck, MessageCircle, ShoppingCart, CheckCircle2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import "./Shop.css";
+import { getProductPath } from "@/utils/productUrl";
 
 export function Shop() {
   const navigate = useNavigate();
@@ -14,6 +15,8 @@ export function Shop() {
   const isArabic = i18n.language === "ar";
   const categories = useShopCategories();
   const products = useShopProducts();
+  const brands = useShopBrands();
+  const models = useShopModels();
   const occasions = useOccasions();
   const { isLoggedIn } = useAuth();
   const { addItem, toggleCart } = useCartStore();
@@ -25,22 +28,27 @@ export function Shop() {
   const handleProductClick = (id: string, isOccasion: boolean) => {
     occasionStore.incrementViews(id, isOccasion);
     if (isOccasion) {
-      navigate(`/shop/occasion/${id}`);
-    } else {
-      const prod = products.find(p => p.id === id);
-      if (prod) {
-        const cat = categories.find(c => c.id === prod.categoryId);
-        const catSlug = cat?.slug || 'category';
-        const prodSlug = prod.slug || id;
-        navigate(`/shop/category/${catSlug}/${prodSlug}`);
-      }
+      navigate("/shop/occasion/" + id);
+      return;
     }
+    const prod = products.find(item => item.id === id);
+    if (!prod) return;
+    const category = categories.find(item => item.id === prod.categoryId);
+    const model = models.find(item => item.id === prod.modelId);
+    const brand = brands.find(item => item.id === prod.brandId) || brands.find(item => item.id === model?.brand_id);
+    navigate(getProductPath({ id: prod.id, slug: prod.slug, categorySlug: category?.slug, brandSlug: brand?.slug || brand?.name, modelSlug: model?.slug || model?.name }));
   };
 
   const filteredProducts = products.filter(p => {
+    const productModel = models.find(model => model.id === p.modelId);
+    const productBrand = brands.find(brand => brand.id === p.brandId) ||
+                         brands.find(brand => brand.id === productModel?.brand_id);
+    const searchableText = [p.name, p.description, productBrand?.name, productModel?.name]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
     const matchesCat = activeCategory === "ALL" || p.categoryId === activeCategory;
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
-                          (p.description && p.description.toLowerCase().includes(search.toLowerCase()));
+    const matchesSearch = searchableText.includes(search.toLowerCase());
     return matchesCat && matchesSearch && p.active;
   });
 
@@ -158,54 +166,69 @@ export function Shop() {
         {/* Products Grid */}
         <div className="tl-shop-grid fade-in-up" style={{ animationDelay: "0.2s" }}>
           {shopMode === "neuf" ? (
-            filteredProducts.map(prod => (
-              <div key={prod.id} className="tl-product-card" onClick={() => handleProductClick(prod.id, false)}>
-                <div className="tl-product-img-wrapper">
-                  {prod.imageUrl ? (
-                    <img src={prod.imageUrl} alt={prod.name} className="tl-product-img" loading="lazy" />
-                  ) : (
-                    <div className="tl-product-placeholder">
-                      <Package size={48} color="var(--color-border)" />
+            filteredProducts.map(prod => {
+              const model = models.find(item => item.id === prod.modelId);
+              const brand = brands.find(item => item.id === prod.brandId) ||
+                            brands.find(item => item.id === model?.brand_id);
+              return (
+                <div key={prod.id} className="tl-product-card" onClick={() => handleProductClick(prod.id, false)}>
+                  <div className="tl-product-img-wrapper">
+                    {prod.imageUrl ? (
+                      <img src={prod.imageUrl} alt={prod.name} className="tl-product-img" loading="lazy" />
+                    ) : (
+                      <div className="tl-product-placeholder">
+                        <Package size={48} color="var(--color-border)" />
+                      </div>
+                    )}
+                    {prod.stock === 0 && (
+                      <div className="tl-product-badge out-of-stock">
+                        {isArabic ? "نفذت الكمية" : "Rupture"}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="tl-product-info">
+                    <h3>{prod.name}</h3>
+                    <div className="tl-product-meta">
+                      <div className="tl-product-meta-item">
+                        <span className="tl-product-meta-label">{isArabic ? "الماركة" : "Marque"}</span>
+                        <span className="tl-product-meta-value">{brand?.name || (isArabic ? "غير محددة" : "Non renseignée")}</span>
+                      </div>
+                      <div className="tl-product-meta-item">
+                        <span className="tl-product-meta-label">{isArabic ? "الموديل" : "Modèle"}</span>
+                        <span className="tl-product-meta-value">{model?.name || (isArabic ? "غير محدد" : "Non renseigné")}</span>
+                      </div>
                     </div>
-                  )}
-                  {prod.stock === 0 && (
-                    <div className="tl-product-badge out-of-stock">
-                      {isArabic ? "نفذت الكمية" : "Rupture"}
+                    {prod.description && <p className="tl-product-desc">{prod.description}</p>}
+
+                    <div className="tl-product-footer">
+                      <div className="tl-product-price">
+                        {prod.price.toFixed(2)} <span>DT</span>
+                      </div>
+                      <button
+                        className="tl-btn-primary"
+                        style={{ padding: "8px", borderRadius: "8px", minWidth: "40px", display: "flex", justifyContent: "center" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addItem({
+                            id: prod.id,
+                            name: prod.name,
+                            price: prod.price,
+                            quantity: 1,
+                            imageUrl: prod.imageUrl,
+                            isOccasion: false
+                          });
+                          toggleCart();
+                        }}
+                        title="Ajouter au panier"
+                      >
+                        <ShoppingCart size={18} />
+                      </button>
                     </div>
-                  )}
-                </div>
-                
-                <div className="tl-product-info">
-                  <h3>{prod.name}</h3>
-                  {prod.description && <p className="tl-product-desc">{prod.description}</p>}
-                  
-                  <div className="tl-product-footer">
-                    <div className="tl-product-price">
-                      {prod.price.toFixed(2)} <span>DT</span>
-                    </div>
-                    <button 
-                      className="tl-btn-primary" 
-                      style={{ padding: "8px", borderRadius: "8px", minWidth: "40px", display: "flex", justifyContent: "center" }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        addItem({
-                          id: prod.id,
-                          name: prod.name,
-                          price: prod.price,
-                          quantity: 1,
-                          imageUrl: prod.imageUrl,
-                          isOccasion: false
-                        });
-                        toggleCart();
-                      }}
-                      title="Ajouter au panier"
-                    >
-                      <ShoppingCart size={18} />
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             filteredOccasions.map(occ => {
               const cleanPhone = occ.whatsappNumber.replace(/[^0-9]/g, "");

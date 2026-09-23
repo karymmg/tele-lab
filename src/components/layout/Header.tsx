@@ -6,7 +6,8 @@ import { useAuth } from "@/services/auth";
 import { LogOut, User, Menu, X, Sun, Moon, ShoppingCart, Search } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useCartStore } from "@/services/cartStore";
-import { useShopProducts } from "@/services/shopStore";
+import { useShopBrands, useShopCategories, useShopModels, useShopProducts } from "@/services/shopStore";
+import { getProductPath } from "@/utils/productUrl";
 import { useShopOrders } from "@/services/orderStore";
 import { useRepairRequests } from "@/services/store";
 import "./Header.css";
@@ -20,6 +21,9 @@ export function Header() {
   const { theme, toggleTheme } = useTheme();
   const { toggleCart, getTotalItems } = useCartStore();
   const products = useShopProducts();
+  const categories = useShopCategories();
+  const brands = useShopBrands();
+  const models = useShopModels();
   const orders = useShopOrders();
   const repairs = useRepairRequests();
 
@@ -52,26 +56,23 @@ export function Header() {
   let navLinks: { to: string; label: string }[];
 
   if (isLoggedIn && user?.role === "admin") {
-    // Admin: only Boutique + Dashboard
     navLinks = [
       { to: "/shop", label: isArabic ? "المتجر" : "Boutique" },
-      { to: dashboardLink, label: "Dashboard" },
+      { to: dashboardLink, label: isArabic ? "لوحة الإدارة" : "Administration" },
     ];
   } else if (isLoggedIn) {
-    // Client: Boutique + Demande + Dashboard
     navLinks = [
+      { to: "/demande", label: isArabic ? "إصلاح في المنزل" : "Réparation à domicile" },
+      { to: "/tracking", label: isArabic ? "تتبع الإصلاح" : "Suivi réparation" },
+      { to: "/dashboard/client#orders", label: isArabic ? "طلباتي" : "Mes commandes" },
       { to: "/shop", label: isArabic ? "المتجر" : "Boutique" },
-      { to: "/demande", label: isArabic ? "طلب إصلاح" : "Demande de réparation" },
-      { to: dashboardLink, label: "Dashboard" },
     ];
   } else {
-    // Guest: full public nav
     navLinks = [
-      { to: "/", label: t("nav.home") },
+      { to: "/demande", label: isArabic ? "إصلاح في المنزل" : "Réparation à domicile" },
+      { to: "/tracking", label: isArabic ? "تتبع الإصلاح" : "Suivi réparation" },
       { to: "/shop", label: isArabic ? "المتجر" : "Boutique" },
-      { to: "/#services", label: t("nav.services") },
-      { to: "/#how-it-works", label: t("nav.howItWorks") },
-      { to: "/#pricing", label: t("nav.pricing") },
+      { to: "/#how-it-works", label: isArabic ? "كيف يعمل" : "Comment ça marche" },
     ];
   }
 
@@ -84,7 +85,7 @@ export function Header() {
       navigate(`/dashboard/admin?q=${encodeURIComponent(searchQuery)}`);
     } else {
       // Pour client/visiteur, on filtre la boutique
-      navigate(`/shop?q=${encodeURIComponent(searchQuery)}`);
+      navigate("/search?q=" + encodeURIComponent(searchQuery.trim()));
     }
     setSearchOpen(false);
     setSearchQuery("");
@@ -130,7 +131,7 @@ export function Header() {
             </button>
             <input 
               type="text" 
-              placeholder={user?.role === "admin" ? "Chercher produit, client, cmd..." : "Chercher un produit..."}
+              placeholder={user?.role === "admin" ? "Chercher client, tél, produit, commande, suivi..." : "Chercher un produit..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus={searchOpen}
@@ -139,17 +140,27 @@ export function Header() {
             {searchOpen && searchQuery && (
               <div className="tl-header__search-dropdown">
                 {(() => {
-                  const query = searchQuery.toLowerCase();
-                  
-                  // For everyone: Products
-                  const matchedProducts = products.filter(p => p.name.toLowerCase().includes(query) || (p.sku && p.sku.toLowerCase().includes(query))).slice(0, 5);
-                  
-                  // For admin: Orders & Repairs
+                  const query = searchQuery.trim().toLowerCase();
+                  const queryDigits = query.replace(/\D/g, "");
+                  const matches = (values: Array<string | undefined | null>, phones: Array<string | undefined | null> = []) => {
+                    if (!query) return false;
+                    const textMatch = values.some(value => value?.toLowerCase().includes(query));
+                    const phoneMatch = queryDigits.length >= 4 && phones.some(value => (value || "").replace(/\D/g, "").includes(queryDigits));
+                    return textMatch || phoneMatch;
+                  };
+                  const matchedProducts = products.filter(p => {
+                    if (!p.active && user?.role !== "admin") return false;
+                    const model = models.find(item => item.id === p.modelId);
+                    const brand = brands.find(item => item.id === p.brandId) || brands.find(item => item.id === model?.brand_id);
+                    const category = categories.find(item => item.id === p.categoryId);
+                    return matches([p.name, p.sku, p.description, brand?.name, model?.name, category?.name]);
+                  }).slice(0, 5);
+
                   let matchedOrders: any[] = [];
                   let matchedRepairs: any[] = [];
                   if (user?.role === "admin") {
-                    matchedOrders = orders.filter(o => o.orderNumber.toLowerCase().includes(query) || o.customerName.toLowerCase().includes(query)).slice(0, 3);
-                    matchedRepairs = repairs.filter(r => r.trackingNumber.toLowerCase().includes(query) || r.customer.phone.includes(query)).slice(0, 3);
+                    matchedOrders = orders.filter(order => matches([order.orderNumber, order.customerName, order.customerAddress, order.customerCity, order.customerGovernorate, order.status, ...(order.items || []).map((item: any) => item.name)], [order.customerPhone])).slice(0, 4);
+                    matchedRepairs = repairs.filter(repair => matches([repair.trackingNumber, repair.customer.firstName, repair.customer.lastName, repair.brand, repair.model, repair.status], [repair.customer.phone])).slice(0, 4);
                   }
 
                   const hasResults = matchedProducts.length > 0 || matchedOrders.length > 0 || matchedRepairs.length > 0;
@@ -159,12 +170,18 @@ export function Header() {
                       {matchedProducts.length > 0 && (
                         <div className="tl-search-section">
                           <div className="tl-search-section-title">Produits</div>
-                          {matchedProducts.map(p => (
-                            <Link key={p.id} to={`/shop/${p.id}`} className="tl-search-item" onClick={() => { setSearchOpen(false); setSearchQuery(""); }}>
-                              <div className="tl-search-item-title">{p.name}</div>
-                              <div className="tl-search-item-sub">{p.price} DT</div>
-                            </Link>
-                          ))}
+                          {matchedProducts.map(p => {
+                            const model = models.find(item => item.id === p.modelId);
+                            const brand = brands.find(item => item.id === p.brandId) || brands.find(item => item.id === model?.brand_id);
+                            const category = categories.find(item => item.id === p.categoryId);
+                            const to = getProductPath({ id: p.id, slug: p.slug, categorySlug: category?.slug, brandSlug: brand?.slug || brand?.name, modelSlug: model?.slug || model?.name });
+                            return (
+                              <Link key={p.id} to={to} className="tl-search-item" onClick={() => { setSearchOpen(false); setSearchQuery(""); }}>
+                                <div className="tl-search-item-title">{p.name}</div>
+                                <div className="tl-search-item-sub">{brand?.name || (isArabic ? "ماركة غير محددة" : "Marque non renseignée")} · {model?.name || (isArabic ? "موديل غير محدد" : "Modèle non renseigné")} · {p.price} DT</div>
+                              </Link>
+                            );
+                          })}
                         </div>
                       )}
                       
@@ -172,7 +189,7 @@ export function Header() {
                         <div className="tl-search-section">
                           <div className="tl-search-section-title">Commandes</div>
                           {matchedOrders.map(o => (
-                            <Link key={o.id} to={`/dashboard/admin?tab=orders&q=${o.orderNumber}`} className="tl-search-item" onClick={() => { setSearchOpen(false); setSearchQuery(""); }}>
+                            <Link key={o.id} to={`/dashboard/admin?tab=orders&q=${encodeURIComponent(o.orderNumber)}`} className="tl-search-item" onClick={() => { setSearchOpen(false); setSearchQuery(""); }}>
                               <div className="tl-search-item-title">{o.orderNumber} - {o.customerName}</div>
                               <div className="tl-search-item-sub">{o.status}</div>
                             </Link>
@@ -184,7 +201,7 @@ export function Header() {
                         <div className="tl-search-section">
                           <div className="tl-search-section-title">Réparations</div>
                           {matchedRepairs.map(r => (
-                            <Link key={r.id} to={`/dashboard/admin?tab=repairs&q=${r.trackingNumber}`} className="tl-search-item" onClick={() => { setSearchOpen(false); setSearchQuery(""); }}>
+                            <Link key={r.id} to={`/dashboard/admin?tab=repairs&q=${encodeURIComponent(r.trackingNumber)}`} className="tl-search-item" onClick={() => { setSearchOpen(false); setSearchQuery(""); }}>
                               <div className="tl-search-item-title">{r.trackingNumber}</div>
                               <div className="tl-search-item-sub">{r.brand} {r.model}</div>
                             </Link>

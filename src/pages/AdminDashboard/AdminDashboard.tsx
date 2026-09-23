@@ -1,14 +1,16 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useRepairRequests, useDrivers, repairStore } from "@/services/store";
 import { RepairRequest } from "@/types/telelab";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { RepairStatusKey, REPAIR_STATUSES } from "@/utils/status";
 import { useAuth } from "@/services/auth";
-import { Settings, Search, X, Clock, User, Phone, DollarSign, Truck, FileText, Users, Wrench, MessageCircle, Plus, Trash2, Printer, Store, Package, ShoppingBag, BarChart3, Shield, Eye } from "lucide-react";
+import { Settings, Search, X, Clock, User, Phone, DollarSign, Truck, FileText, Users, Wrench, MessageCircle, Plus, Trash2, Printer, Store, Package, ShoppingBag, BarChart3, Shield, Eye, Pencil, Save } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { RepairRequestForm } from "@/components/forms/RepairRequestForm";
 import { useShopCategories, useShopProducts, useShopBrands, useShopModels, shopStore } from "@/services/shopStore";
+import { ShopProduct } from "@/types/shop";
 import { useOccasions, useSiteVisits, occasionStore } from "@/services/occasionStore";
 import { useShopOrders, orderStore } from "@/services/orderStore";
 import { supabase } from "@/services/supabase/client";
@@ -35,14 +37,81 @@ interface ProfileUser {
   created_at: string;
 }
 
+type CsvImportStatus = { phase: "idle" | "importing" | "complete" | "error"; total: number; processed: number; added: number; errors: string[]; message?: string };
+type AdminSearchResult = { id: string; kind: string; title: string; subtitle: string; tab: TabType };
+
+function detectCsvDelimiter(text: string): string {
+  const source = text.replace(/^\uFEFF/, "");
+  let commas = 0;
+  let semicolons = 0;
+  let quoted = false;
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === '"') {
+      if (quoted && source[index + 1] === '"') index += 1;
+      else quoted = !quoted;
+    } else if (!quoted && (char === "\n" || char === "\r")) {
+      break;
+    } else if (!quoted && char === ",") {
+      commas += 1;
+    } else if (!quoted && char === ";") {
+      semicolons += 1;
+    }
+  }
+  return commas > semicolons ? "," : ";";
+}
+
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let quoted = false;
+  const delimiter = detectCsvDelimiter(text);
+  const source = text.replace(/^\uFEFF/, "");
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === '"') {
+      if (quoted && source[index + 1] === '"') { field += '"'; index += 1; }
+      else quoted = !quoted;
+    } else if (char === delimiter && !quoted) {
+      row.push(field.trim()); field = "";
+    } else if (char === "\n" && !quoted) {
+      row.push(field.replace(/\r$/, "").trim()); field = "";
+      if (row.some(value => value !== "")) rows.push(row);
+      row = [];
+    } else if (char !== "\r" || quoted) {
+      field += char;
+    }
+  }
+  if (quoted) throw new Error("Le fichier CSV contient un champ entre guillemets non terminé.");
+  row.push(field.replace(/\r$/, "").trim());
+  if (row.some(value => value !== "")) rows.push(row);
+  return rows;
+}
+function normalizeCsvHeader(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+function normalizeCsvValue(value: string): string {
+  return normalizeCsvHeader(value).replace(/[^a-z0-9]/g, "");
+}
+
+function isAdminTab(value: string | null): value is TabType {
+  return ["stats", "repairs", "orders", "users", "drivers", "shop", "occasions"].includes(value || "");
+}
+
 export function AdminDashboard() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const requests = useRepairRequests();
   const drivers = useDrivers();
   const isArabic = i18n.language === "ar";
+  const [searchParams] = useSearchParams();
+  const urlQuery = searchParams.get("q") || "";
+  const urlTab = searchParams.get("tab");
+  const initialTab: TabType = isAdminTab(urlTab) ? urlTab : "stats";
 
-  const [activeTab, setActiveTab] = useState<TabType>("stats");
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const tabsRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll the active tab into view on mobile
@@ -56,7 +125,13 @@ export function AdminDashboard() {
     const scrollLeft = activeBtn.offsetLeft - containerRect.width / 2 + btnRect.width / 2;
     container.scrollTo({ left: scrollLeft, behavior: "smooth" });
   }, [activeTab]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(urlQuery);
+  const [adminSearch, setAdminSearch] = useState(urlQuery);
+  const [adminSearchOpen, setAdminSearchOpen] = useState(false);
+  const [csvImportStatus, setCsvImportStatus] = useState<CsvImportStatus>({ phase: "idle", total: 0, processed: 0, added: 0, errors: [] });
+  const [editingProduct, setEditingProduct] = useState<ShopProduct | null>(null);
+  const [productEditForm, setProductEditForm] = useState({ name: "", sku: "", categoryId: "", brandId: "", modelId: "", price: "", costPrice: "", stock: "", description: "", imageUrl: "", active: true });
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [selectedReq, setSelectedReq] = useState<RepairRequest | null>(null);
   const [editingPrice, setEditingPrice] = useState<string>("");
@@ -82,6 +157,15 @@ export function AdminDashboard() {
   const siteVisits = useSiteVisits();
   const shopOrders = useShopOrders();
   const [shopView, setShopView] = useState<"products" | "categories" | "stock">("products");
+  useEffect(() => {
+    setSearch(urlQuery);
+    setAdminSearch(urlQuery);
+    setAdminSearchOpen(Boolean(urlQuery));
+    if (isAdminTab(urlTab)) {
+      setActiveTab(urlTab);
+      if (urlTab === "shop") setShopView("products");
+    }
+  }, [urlQuery, urlTab]);
   const [totalUsers, setTotalUsers] = useState(0);
   const [profileUsers, setProfileUsers] = useState<ProfileUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -90,14 +174,34 @@ export function AdminDashboard() {
   const [newUser, setNewUser] = useState({ firstName: "", lastName: "", email: "", phone: "", password: "", role: "customer" });
 
   React.useEffect(() => {
+    let active = true;
     async function fetchUsers() {
+      if (!active) return;
       setUsersLoading(true);
-      const { data, count } = await supabase.from("profiles").select("*", { count: "exact" });
+      const { data, count, error } = await supabase.from("profiles").select("*", { count: "exact" });
+      if (!active) return;
+      if (error) {
+        console.error("Failed to refresh admin users:", error);
+        setUsersLoading(false);
+        return;
+      }
       if (count !== null) setTotalUsers(count);
       if (data) setProfileUsers(data as ProfileUser[]);
       setUsersLoading(false);
     }
-    fetchUsers();
+
+    void fetchUsers();
+    const profilesChannel = supabase
+      .channel("admin:profiles")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+        void fetchUsers();
+      })
+      .subscribe();
+
+    return () => {
+      active = false;
+      void supabase.removeChannel(profilesChannel);
+    };
   }, []);
 
   async function handleRoleChange(userId: string, newRole: string) {
@@ -255,12 +359,17 @@ export function AdminDashboard() {
     { name: "Frais Livreur", montant: driverCost, fill: "var(--color-error)" },
   ];
 
+  const matchesAdminSearch = (query: string, values: unknown[], phoneValues: unknown[] = []) => {
+    const normalized = query.trim().toLocaleLowerCase();
+    if (!normalized) return true;
+    const textMatch = values.some(value => String(value ?? "").toLocaleLowerCase().includes(normalized));
+    const digits = normalized.replace(/\D/g, "");
+    const phoneMatch = digits.length >= 4 && phoneValues.some(value => String(value ?? "").replace(/\D/g, "").includes(digits));
+    return textMatch || phoneMatch;
+  };
+
   const filteredRequests = requests.filter((req) => {
-    const matchesSearch =
-      req.trackingNumber.toLowerCase().includes(search.toLowerCase()) ||
-      `${req.customer.firstName} ${req.customer.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
-      req.customer.phone.includes(search) ||
-      `${req.brand} ${req.model}`.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = matchesAdminSearch(search, [req.trackingNumber, req.customer.firstName, req.customer.lastName, req.brand, req.model, req.status], [req.customer.phone]);
     const matchesStatus = statusFilter === "ALL" || req.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -276,10 +385,7 @@ export function AdminDashboard() {
     client.repairCount += 1;
     client.spent += req.price || 0;
   });
-  const clientsList = Array.from(uniqueClientsMap.values()).filter(c => 
-    `${c.firstName} ${c.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone.includes(search)
-  );
+  const clientsList = Array.from(uniqueClientsMap.values()).filter(c => matchesAdminSearch(search, [c.firstName, c.lastName], [c.phone]));
 
   // --- DRIVERS LOGIC ---
   const driversStats = drivers.map(d => {
@@ -297,6 +403,37 @@ export function AdminDashboard() {
       completedDeliveries: completedReqs.length,
     };
   });
+
+  const filteredProducts = products.filter(product => {
+    const category = categories.find(item => item.id === product.categoryId);
+    const model = models.find(item => item.id === product.modelId);
+    const brand = brands.find(item => item.id === product.brandId) || brands.find(item => item.id === model?.brand_id);
+    return matchesAdminSearch(search, [product.name, product.sku, product.description, category?.name, brand?.name, model?.name]);
+  });
+  const filteredDrivers = driversStats.filter(driver => matchesAdminSearch(search, [driver.name, driver.zone], [driver.phone]));
+  const filteredOccasions = occasions.filter(item => matchesAdminSearch(search, [item.brand, item.model, item.type, item.description, item.sellerName, item.status]));
+
+  const adminQuery = adminSearch.trim();
+  const adminSearchResults: AdminSearchResult[] = adminQuery.length < 2 ? [] : [
+    ...requests.filter(item => matchesAdminSearch(adminQuery, [item.trackingNumber, item.customer.firstName, item.customer.lastName, item.brand, item.model, item.status], [item.customer.phone])).slice(0, 4).map(item => ({ id: item.id, kind: isArabic ? "إصلاح" : "Réparation", title: item.trackingNumber, subtitle: item.customer.firstName + " " + item.customer.lastName + " · " + item.customer.phone + " · " + item.brand + " " + item.model, tab: "repairs" as TabType })),
+    ...shopOrders.filter(item => matchesAdminSearch(adminQuery, [item.orderNumber, item.customerName, item.customerAddress, item.customerCity, item.customerGovernorate, item.status, ...item.items.map(product => product.name)], [item.customerPhone])).slice(0, 4).map(item => ({ id: item.id, kind: isArabic ? "طلب" : "Commande", title: item.orderNumber, subtitle: item.customerName + " · " + item.customerPhone, tab: "orders" as TabType })),
+    ...profileUsers.filter(item => matchesAdminSearch(adminQuery, [item.first_name, item.last_name, item.email, item.auth_email, item.role], [item.phone])).slice(0, 4).map(item => ({ id: item.id, kind: isArabic ? "مستخدم" : "Utilisateur", title: item.first_name + " " + item.last_name, subtitle: item.phone + " · " + (item.auth_email || item.email || item.role), tab: "users" as TabType })),
+    ...products.filter(item => {
+      const model = models.find(candidate => candidate.id === item.modelId);
+      const brand = brands.find(candidate => candidate.id === item.brandId) || brands.find(candidate => candidate.id === model?.brand_id);
+      const category = categories.find(candidate => candidate.id === item.categoryId);
+      return matchesAdminSearch(adminQuery, [item.name, item.sku, item.description, brand?.name, model?.name, category?.name]);
+    }).slice(0, 4).map(item => ({ id: item.id, kind: isArabic ? "منتج" : "Produit", title: item.name, subtitle: (item.sku || "—") + " · " + item.price.toFixed(2) + " DT · stock " + item.stock, tab: "shop" as TabType })),
+    ...driversStats.filter(item => matchesAdminSearch(adminQuery, [item.name, item.zone], [item.phone])).slice(0, 3).map(item => ({ id: item.id, kind: isArabic ? "موصل" : "Livreur", title: item.name, subtitle: item.phone + " · " + item.zone, tab: "drivers" as TabType })),
+    ...occasions.filter(item => matchesAdminSearch(adminQuery, [item.brand, item.model, item.type, item.description, item.sellerName, item.status])).slice(0, 3).map(item => ({ id: item.id, kind: isArabic ? "إعلان" : "Occasion", title: item.brand + " " + item.model, subtitle: item.type + " · " + item.price.toFixed(2) + " DT · " + (item.sellerName || "Vendeur"), tab: "occasions" as TabType })),
+  ].slice(0, 10);
+
+  function openAdminSearchResult(result: AdminSearchResult) {
+    setActiveTab(result.tab);
+    setSearch(adminQuery);
+    if (result.tab === "shop") setShopView("products");
+    setAdminSearchOpen(false);
+  }
 
   function handleAddDriver(e: React.FormEvent) {
     e.preventDefault();
@@ -378,45 +515,119 @@ export function AdminDashboard() {
   }
 
   const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split("\n");
-      // Skip header (name,sku,price,cost_price,stock,categoryId,brandId,modelId,description,imageUrl)
+    setCsvImportStatus({ phase: "importing", total: 0, processed: 0, added: 0, errors: [], message: isArabic ? "جاري قراءة الملف..." : "Lecture du fichier CSV..." });
+    try {
+      const rows = parseCsv(await file.text());
+      if (rows.length < 2) throw new Error(isArabic ? "الملف فارغ أو ناقص." : "Le fichier CSV est vide ou incomplet.");
+
+      const headers = rows[0].map(normalizeCsvHeader);
+      const findColumn = (...aliases: string[]) => headers.findIndex(header => aliases.includes(header));
+      const columns = {
+        name: findColumn("nom", "name"),
+        sku: findColumn("sku", "reference"),
+        price: findColumn("prixvente", "prix", "price", "saleprice"),
+        costPrice: findColumn("prixachat", "costprice", "purchaseprice"),
+        stock: findColumn("stock", "quantite", "quantity"),
+        categoryId: findColumn("idcategorie", "categoryid", "categorie"),
+        brandId: findColumn("idmarque", "brandid", "marque", "brand"),
+        modelId: findColumn("idmodele", "modelid", "modele", "model"),
+        description: findColumn("description"),
+        imageUrl: findColumn("urlimage", "imageurl", "image"),
+      };
+      if (columns.name < 0 || columns.price < 0 || columns.categoryId < 0) {
+        throw new Error(isArabic ? "تأكد من الأعمدة: Nom وPrix أو Prix_Vente وID_Categorie." : "Colonnes requises manquantes : Nom, Prix (ou Prix_Vente) et ID_Categorie.");
+      }
+
+      let categoryOptions = shopStore.getCategories();
+      if (!categoryOptions.length) {
+        await shopStore.refreshData();
+        categoryOptions = shopStore.getCategories();
+      }
+      const dataRows = rows.slice(1);
+      const errors: string[] = [];
       let added = 0;
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        const [name, sku, price, costPrice, stock, categoryId, brandId, modelId, description, imageUrl] = line.split(";");
-        
-        if (name && price && categoryId) {
+      setCsvImportStatus({ phase: "importing", total: dataRows.length, processed: 0, added: 0, errors: [] });
+      const readValue = (row: string[], index: number) => index >= 0 ? (row[index] || "").trim() : "";
+      const parseAmount = (value: string) => Number(value.replace(/\s/g, "").replace(",", "."));
+
+      for (let rowIndex = 0; rowIndex < dataRows.length; rowIndex += 1) {
+        const row = dataRows[rowIndex];
+        const productName = readValue(row, columns.name);
+        const sku = readValue(row, columns.sku);
+        const priceText = readValue(row, columns.price);
+        const costText = readValue(row, columns.costPrice);
+        const stockText = readValue(row, columns.stock);
+        const categoryValue = readValue(row, columns.categoryId);
+        const normalizedCategory = normalizeCsvValue(categoryValue);
+        const categoryMatch = categoryOptions.find(category =>
+          category.id.toLocaleLowerCase() === categoryValue.toLocaleLowerCase() ||
+          normalizeCsvValue(category.name) === normalizedCategory ||
+          normalizeCsvValue(category.slug || "") === normalizedCategory
+        );
+        const categoryId = categoryMatch?.id || categoryValue;
+        const brandId = readValue(row, columns.brandId);
+        const modelId = readValue(row, columns.modelId);
+        const description = readValue(row, columns.description);
+        const imageUrl = readValue(row, columns.imageUrl);
+        const price = parseAmount(priceText);
+        const costPrice = costText ? parseAmount(costText) : 0;
+        const stock = stockText ? Number(stockText.replace(",", ".")) : 0;
+        let rowError = "";
+
+        if (row.length < 9) rowError = "colonnes manquantes";
+        else if (!productName || !categoryValue || !priceText) rowError = "nom, prix ou catégorie manquant";
+        else if (!categoryMatch && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryValue)) rowError = "catégorie introuvable : " + categoryValue;
+        else if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)) rowError = "ID_Categorie invalide";
+        else if (!Number.isFinite(price) || price <= 0) rowError = "prix de vente invalide";
+        else if (!Number.isFinite(costPrice) || costPrice < 0) rowError = "prix d'achat invalide";
+        else if (!Number.isInteger(stock) || stock < 0) rowError = "stock invalide";
+
+        if (rowError) {
+          errors.push("Ligne " + (rowIndex + 2) + " : " + rowError);
+        } else {
           try {
             await shopStore.addProduct({
-              name,
+              name: productName,
               sku: sku || undefined,
-              price: parseFloat(price) || 0,
-              costPrice: parseFloat(costPrice) || 0,
-              stock: parseInt(stock) || 0,
+              price,
+              costPrice,
+              stock,
               categoryId,
               brandId: brandId || undefined,
               modelId: modelId || undefined,
               description: description || undefined,
               imageUrl: imageUrl || undefined,
               active: true
-            });
-            added++;
-          } catch (err) {
-            console.error("Erreur import ligne " + i, err);
+            }, { deferRefresh: true });
+            added += 1;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Erreur d'import";
+            errors.push("Ligne " + (rowIndex + 2) + " : " + message);
           }
         }
+
+        setCsvImportStatus({ phase: "importing", total: dataRows.length, processed: rowIndex + 1, added, errors: errors.slice(0, 5) });
       }
-      alert(`Import terminé. ${added} produits ajoutés.`);
-      if (e.target) e.target.value = "";
-    };
-    reader.readAsText(file);
+
+      await shopStore.refreshData();
+      setCsvImportStatus({
+        phase: "complete",
+        total: dataRows.length,
+        processed: dataRows.length,
+        added,
+        errors: errors.slice(0, 5),
+        message: (isArabic ? "تم استيراد " : "Import terminé : ") + added + (isArabic ? " منتج." : " produit(s) ajouté(s).") + (errors.length ? " " + errors.length + (isArabic ? " أسطر فيها أخطاء." : " ligne(s) à corriger.") : ""),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erreur pendant la lecture du CSV";
+      setCsvImportStatus({ phase: "error", total: 0, processed: 0, added: 0, errors: [message], message });
+    } finally {
+      input.value = "";
+    }
   };
 
   const handleDownloadCsvTemplate = () => {
@@ -424,8 +635,8 @@ export function AdminDashboard() {
     const header = "Nom;SKU;Prix_Vente;Prix_Achat;Stock;ID_Categorie;ID_Marque;ID_Modele;Description;URL_Image\n";
     // Example rows
     const examples = [
-      "Cable iPhone Rapide;CBL-IPH-001;25.0;10.0;10;uuid-cat-1;uuid-brand-1;uuid-model-1;Cable de charge rapide pour iPhone;https://example.com/img1.webp",
-      "Ecouteurs AirPods;EAR-POD-001;150.0;80.0;5;uuid-cat-2;;;Ecouteurs sans fil bluetooth;",
+      "Câble iPhone Rapide;CBL-IPH-001;25.00;10.00;10;33f5d506-8d61-4fa3-9f5e-1cdff17122a2;Apple;iPhone 15;Câble de charge rapide pour iPhone;https://example.com/img1.webp",
+      "Écouteurs AirPods;EAR-POD-001;150.00;80.00;5;bc9277d7-fde0-47b8-80f0-c5ef61ed8127;;;Écouteurs sans fil bluetooth;",
     ].join("\n");
     
     const blob = new Blob([header + examples], { type: 'text/csv;charset=utf-8;' });
@@ -438,6 +649,58 @@ export function AdminDashboard() {
     document.body.removeChild(link);
   };
 
+  function handleOpenProductEditor(product: ShopProduct) {
+    setEditingProduct(product);
+    setProductEditForm({
+      name: product.name,
+      sku: product.sku || "",
+      categoryId: product.categoryId,
+      brandId: product.brandId || "",
+      modelId: product.modelId || "",
+      price: String(product.price),
+      costPrice: String(product.costPrice || 0),
+      stock: String(product.stock),
+      description: product.description || "",
+      imageUrl: product.imageUrl || "",
+      active: product.active,
+    });
+  }
+
+  async function handleSaveProduct(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingProduct) return;
+    const price = Number(productEditForm.price.replace(",", "."));
+    const costPrice = Number(productEditForm.costPrice.replace(",", ".")) || 0;
+    const stock = Number(productEditForm.stock);
+    if (!productEditForm.name.trim() || !productEditForm.categoryId || !Number.isFinite(price) || price <= 0 || !Number.isFinite(costPrice) || costPrice < 0 || !Number.isInteger(stock) || stock < 0) {
+      alert(isArabic ? "راجع الاسم والسعر والمخزون والفئة." : "Vérifiez le nom, les prix, le stock et la catégorie.");
+      return;
+    }
+
+    setIsSavingProduct(true);
+    try {
+      await shopStore.updateProduct(editingProduct.id, {
+        name: productEditForm.name.trim(),
+        sku: productEditForm.sku.trim(),
+        categoryId: productEditForm.categoryId,
+        brandId: productEditForm.brandId || null,
+        modelId: productEditForm.modelId || null,
+        price,
+        costPrice,
+        stock,
+        description: productEditForm.description.trim(),
+        imageUrl: productEditForm.imageUrl.trim(),
+        active: productEditForm.active,
+      });
+      setEditingProduct(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erreur de mise à jour du produit";
+      alert((isArabic ? "تعذر حفظ المنتج: " : "Impossible d'enregistrer le produit : ") + message);
+    } finally {
+      setIsSavingProduct(false);
+    }
+  }
+
   async function handleDeleteProduct(id: string) {
     if(confirm("Supprimer ce produit ?")) {
       try {
@@ -445,6 +708,13 @@ export function AdminDashboard() {
       } catch (err) {
         alert("Erreur lors de la suppression");
       }
+    }
+  }
+  async function handleProductReferenceChange(productId: string, updates: { brandId?: string | null; modelId?: string | null }) {
+    try {
+      await shopStore.updateProduct(productId, updates);
+    } catch (err: any) {
+      alert("Erreur lors de l’association de la marque ou du modèle : " + err.message);
     }
   }
 
@@ -559,7 +829,34 @@ export function AdminDashboard() {
             </h1>
             <p>{isArabic ? `متصل بـ: ${user?.displayName || "Admin"}` : `Connecté : ${user?.displayName || "Admin"}`}</p>
           </div>
-          
+
+          <form className="tl-admin-global-search" onSubmit={(event) => { event.preventDefault(); if (adminSearchResults[0]) openAdminSearchResult(adminSearchResults[0]); else setAdminSearchOpen(true); }} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setAdminSearchOpen(false); }}>
+            <Search size={18} aria-hidden="true" />
+            <input
+              type="search"
+              value={adminSearch}
+              onFocus={() => setAdminSearchOpen(true)}
+              onChange={event => { setAdminSearch(event.target.value); setAdminSearchOpen(true); }}
+              onKeyDown={event => { if (event.key === "Escape") setAdminSearchOpen(false); }}
+              placeholder={isArabic ? "بحث شامل: مستخدم، هاتف، منتج، طلب، تتبّع..." : "Recherche globale : client, téléphone, produit, commande, suivi…"}
+              aria-label={isArabic ? "بحث شامل في الإدارة" : "Recherche globale dans l’administration"}
+              aria-expanded={adminSearchOpen && Boolean(adminSearch)}
+              aria-controls="tl-admin-search-results"
+            />
+            {adminSearch && <button type="button" className="tl-admin-search-clear" onClick={() => { setAdminSearch(""); setSearch(""); setAdminSearchOpen(true); }} aria-label={isArabic ? "مسح البحث" : "Effacer la recherche"}><X size={16} /></button>}
+            {adminSearchOpen && adminSearch.trim() && (
+              <div className="tl-admin-search-results" id="tl-admin-search-results" role="listbox">
+                <div className="tl-admin-search-results__heading">{isArabic ? "نتائج في كل الأقسام" : "Résultats dans tous les espaces"}</div>
+                {adminSearchResults.length ? adminSearchResults.map(result => (
+                  <button type="button" role="option" aria-selected="false" key={result.kind + result.id} className="tl-admin-search-result" onClick={() => openAdminSearchResult(result)}>
+                    <span className="tl-admin-search-result__kind">{result.kind}</span>
+                    <span className="tl-admin-search-result__copy"><strong>{result.title}</strong><small>{result.subtitle}</small></span>
+                  </button>
+                )) : <p className="tl-admin-search-empty">{usersLoading ? (isArabic ? "جاري تحميل المستخدمين..." : "Chargement des utilisateurs…") : (isArabic ? "ما لقيناش نتائج مطابقة." : "Aucun résultat correspondant.")}</p>}
+              </div>
+            )}
+          </form>
+
           <div className="tl-admin-tabs" ref={tabsRef}>
             <button 
               className={`tl-tab-btn ${activeTab === "stats" ? "is-active" : ""}`}
@@ -610,28 +907,41 @@ export function AdminDashboard() {
         {activeTab === "stats" && (
           <div className="tl-tab-content fade-in">
             <div className="tl-glass-dashboard-wrapper">
-              <div className="tl-glass-dashboard-title">
-                {isArabic ? "لوحة الإحصائيات" : "TELE LAB DASHBOARD"}
+              <div className="tl-glass-dashboard-heading">
+                <span className="tl-glass-dashboard-eyebrow">{isArabic ? "متابعة النشاط" : "VUE D’ENSEMBLE"}</span>
+                <div className="tl-glass-dashboard-title">{isArabic ? "لوحة الإحصائيات" : "Tableau de bord"}</div>
+                <p className="tl-glass-dashboard-subtitle">
+                  {isArabic ? "نظرة واضحة على المداخيل والإصلاحات ونشاط المتجر" : "Les indicateurs clés des réparations, des ventes et de l’activité."}
+                </p>
               </div>
               
               {/* KPI Row */}
               <div className="tl-glass-kpi-row">
                 <div className="tl-glass-kpi-card">
+                  <div className="tl-glass-kpi-icon is-users"><Users size={18} aria-hidden="true" /></div>
                   <div className="tl-glass-kpi-value">{totalUsers}</div>
                   <div className="tl-glass-kpi-label">{isArabic ? "المستخدمين" : "TOTAL UTILISATEURS"}</div>
                 </div>
                 <div className="tl-glass-kpi-card">
+                  <div className="tl-glass-kpi-icon is-revenue"><DollarSign size={18} aria-hidden="true" /></div>
                   <div className="tl-glass-kpi-value">{(totalRevenue + shopRevenue).toFixed(0)}</div>
                   <div className="tl-glass-kpi-label">{isArabic ? "الإيرادات (DT)" : "CHIFFRE D'AFFAIRES (DT)"}</div>
                 </div>
                 <div className="tl-glass-kpi-card">
+                  <div className="tl-glass-kpi-icon is-repairs"><Wrench size={18} aria-hidden="true" /></div>
                   <div className="tl-glass-kpi-value">{requests.length}</div>
                   <div className="tl-glass-kpi-label">{isArabic ? "الإصلاحات" : "TOTAL RÉPARATIONS"}</div>
                 </div>
                 <div className="tl-glass-kpi-card">
+                  <div className="tl-glass-kpi-icon is-orders"><ShoppingBag size={18} aria-hidden="true" /></div>
                   <div className="tl-glass-kpi-value">{shopOrders.length}</div>
                   <div className="tl-glass-kpi-label">{isArabic ? "طلبات المتجر" : "COMMANDES BOUTIQUE"}</div>
                 </div>
+              </div>
+
+              <div className="tl-glass-section-heading">
+                <h2>{isArabic ? "تحليل النشاط" : "Analyse de l’activité"}</h2>
+                <p>{isArabic ? "المداخيل وتوزيع طلبات الإصلاح" : "Chiffre d’affaires et répartition des réparations"}</p>
               </div>
 
               {/* Chart Row 1 */}
@@ -641,10 +951,10 @@ export function AdminDashboard() {
                   <div className="tl-glass-chart-content">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                        <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" fontSize={11} tickLine={false} axisLine={false} />
-                        <YAxis stroke="rgba(255,255,255,0.5)" fontSize={11} tickLine={false} axisLine={false} />
-                        <RechartsTooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ background: "rgba(0,0,0,0.8)", border: "none", borderRadius: 8, color: "white" }} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                        <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} />
+                        <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} />
+                        <RechartsTooltip cursor={{ fill: "rgba(var(--color-primary-rgb), 0.06)" }} contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }} />
                         <Bar dataKey="montant" radius={[4, 4, 0, 0]}>
                           {barData.map((entry, index) => <Cell key={index} fill={entry.fill} />)}
                         </Bar>
@@ -661,11 +971,16 @@ export function AdminDashboard() {
                         <Pie data={pieData} innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value" stroke="none">
                           {pieData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
                         </Pie>
-                        <RechartsTooltip contentStyle={{ background: "rgba(0,0,0,0.8)", border: "none", borderRadius: 8, color: "white" }} />
+                        <RechartsTooltip contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 8, color: "var(--color-text)" }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
+              </div>
+
+              <div className="tl-glass-section-heading tl-glass-section-heading-secondary">
+                <h2>{isArabic ? "العمليات والزيارات" : "Opérations & fréquentation"}</h2>
+                <p>{isArabic ? "الهامش والتوصيل ونشاط الموقع" : "Marge, livraisons et activité du site"}</p>
               </div>
 
               {/* Chart Row 2 */}
@@ -676,15 +991,15 @@ export function AdminDashboard() {
                     <div style={{ display: "flex", justifyContent: "space-around", width: "100%", alignItems: "center" }}>
                         <div style={{ textAlign: "center" }}>
                           <div style={{ fontSize: 24, fontWeight: 700, color: "var(--color-success)" }}>{totalBenefice.toFixed(0)}</div>
-                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>Marge (DT)</div>
+                          <div style={{ fontSize: 10, color: "var(--color-text-secondary)", textTransform: "uppercase" }}>Marge (DT)</div>
                         </div>
                         <div style={{ textAlign: "center" }}>
                           <div style={{ fontSize: 24, fontWeight: 700, color: "#f59e0b" }}>{shopCost.toFixed(0)}</div>
-                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>Achat (DT)</div>
+                          <div style={{ fontSize: 10, color: "var(--color-text-secondary)", textTransform: "uppercase" }}>Achat (DT)</div>
                         </div>
                         <div style={{ textAlign: "center" }}>
                           <div style={{ fontSize: 24, fontWeight: 700, color: "var(--color-error)" }}>{driverCost.toFixed(0)}</div>
-                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>Livraison (DT)</div>
+                          <div style={{ fontSize: 10, color: "var(--color-text-secondary)", textTransform: "uppercase" }}>Livraison (DT)</div>
                         </div>
                     </div>
                   </div>
@@ -694,8 +1009,8 @@ export function AdminDashboard() {
                   <div className="tl-glass-chart-title">{isArabic ? "الزيارات" : "VISITES SITE"}</div>
                   <div className="tl-glass-chart-content">
                     <svg width="100%" height="100%" viewBox="0 0 100 100" style={{ position: "absolute" }}>
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="10" />
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="#38bdf8" strokeWidth="10" strokeDasharray="251" strokeDashoffset={251 - (251 * Math.min(siteVisits, 1000) / 1000)} strokeLinecap="round" transform="rotate(-90 50 50)" />
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="var(--color-border)" strokeWidth="10" />
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="var(--color-primary)" strokeWidth="10" strokeDasharray="251" strokeDashoffset={251 - (251 * Math.min(siteVisits, 1000) / 1000)} strokeLinecap="round" transform="rotate(-90 50 50)" />
                       <text x="50" y="50" textAnchor="middle" dominantBaseline="middle" className="tl-radial-center-text">{siteVisits}</text>
                       <text x="50" y="70" textAnchor="middle" dominantBaseline="middle" className="tl-radial-center-label">VISITES</text>
                     </svg>
@@ -706,8 +1021,8 @@ export function AdminDashboard() {
                   <div className="tl-glass-chart-title">{isArabic ? "المستعمل" : "OCCASIONS"}</div>
                   <div className="tl-glass-chart-content">
                     <svg width="100%" height="100%" viewBox="0 0 100 100" style={{ position: "absolute" }}>
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="10" />
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="#a855f7" strokeWidth="10" strokeDasharray="251" strokeDashoffset={251 - (251 * occasions.length / 50)} strokeLinecap="round" transform="rotate(-90 50 50)" />
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="var(--color-border)" strokeWidth="10" />
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="var(--color-purple)" strokeWidth="10" strokeDasharray="251" strokeDashoffset={251 - (251 * occasions.length / 50)} strokeLinecap="round" transform="rotate(-90 50 50)" />
                       <text x="50" y="50" textAnchor="middle" dominantBaseline="middle" className="tl-radial-center-text">{occasions.length}</text>
                       <text x="50" y="70" textAnchor="middle" dominantBaseline="middle" className="tl-radial-center-label">ANNONCES</text>
                     </svg>
@@ -872,7 +1187,7 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {shopOrders.filter(o => o.orderNumber.includes(search) || o.customerName.toLowerCase().includes(search.toLowerCase()) || o.customerPhone.includes(search)).map((order) => (
+                    {shopOrders.filter(o => matchesAdminSearch(search, [o.orderNumber, o.customerName, o.customerAddress, o.customerCity, o.customerGovernorate, o.status, ...o.items.map(item => item.name)], [o.customerPhone])).map((order) => (
                       <tr key={order.id}>
                         <td data-label="N° Commande" style={{ fontWeight: 600, color: "var(--color-success)" }}>{order.orderNumber}</td>
                         <td data-label="Date" style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
@@ -1012,12 +1327,7 @@ export function AdminDashboard() {
                     </thead>
                     <tbody>
                       {profileUsers
-                        .filter(u => 
-                          `${u.first_name} ${u.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
-                          u.phone.includes(search) ||
-                          (u.email || "").toLowerCase().includes(search.toLowerCase()) ||
-                          (u.auth_email || "").toLowerCase().includes(search.toLowerCase())
-                        )
+                        .filter(u => matchesAdminSearch(search, [u.first_name, u.last_name, u.email, u.auth_email, u.role], [u.phone]))
                         .map((u) => {
                           const roleColors: Record<string, { bg: string; color: string; label: string }> = {
                             admin: { bg: "rgba(239,68,68,0.1)", color: "var(--color-error)", label: "Admin" },
@@ -1202,7 +1512,7 @@ export function AdminDashboard() {
             </div>
 
             <div className="tl-driver-grid">
-              {driversStats.map((driver) => (
+              {filteredDrivers.map((driver) => (
                 <div key={driver.id} className="tl-driver-card">
                   <div className="tl-driver-header">
                     <div className="tl-driver-avatar">
@@ -1341,6 +1651,7 @@ export function AdminDashboard() {
                 <div className="tl-admin-toolbar" style={{ alignItems: "flex-end", marginTop: 24, justifyContent: "space-between" }}>
                   <div style={{ display: "flex", gap: 12, alignItems: "center", width: "100%", flexWrap: "wrap" }}>
                     <h3 style={{ margin: 0, fontSize: 16, flex: 1, minWidth: 200 }}>Gestion des Produits</h3>
+                    <div className="tl-product-list-search"><Search size={17} aria-hidden="true" /><input type="search" aria-label={isArabic ? "بحث في المنتجات" : "Rechercher dans les produits"} placeholder={isArabic ? "اسم، ماركة، موديل، SKU…" : "Nom, marque, modèle, SKU…"} value={search} onChange={event => setSearch(event.target.value)} /><span>{filteredProducts.length}</span></div>
                     <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                       <button 
                         type="button" 
@@ -1354,7 +1665,8 @@ export function AdminDashboard() {
                       <div style={{ position: "relative" }}>
                         <input 
                           type="file" 
-                          accept=".csv" 
+                          accept=".csv,text/csv"
+                          disabled={csvImportStatus.phase === "importing"}
                           onChange={handleCsvImport} 
                           style={{ position: "absolute", opacity: 0, width: "100%", height: "100%", cursor: "pointer", zIndex: 10 }}
                           title="Importer CSV"
@@ -1366,6 +1678,17 @@ export function AdminDashboard() {
                     </div>
                   </div>
                 </div>
+
+                {csvImportStatus.phase !== "idle" && (
+                  <div className={"tl-csv-import-status is-" + csvImportStatus.phase} role="status" aria-live="polite">
+                    <div className="tl-csv-import-status__top">
+                      <strong>{csvImportStatus.message || (isArabic ? "جاري الاستيراد" : "Import en cours")}</strong>
+                      {csvImportStatus.phase === "importing" && csvImportStatus.total > 0 && <span>{csvImportStatus.processed} / {csvImportStatus.total}</span>}
+                    </div>
+                    {csvImportStatus.phase === "importing" && csvImportStatus.total > 0 && <progress max={csvImportStatus.total} value={csvImportStatus.processed} />}
+                    {csvImportStatus.errors.length > 0 && <ul>{csvImportStatus.errors.slice(0, 4).map((error, index) => <li key={index}>{error}</li>)}</ul>}
+                  </div>
+                )}
 
                 <div className="tl-admin-toolbar" style={{ alignItems: "flex-start", marginTop: 12, background: "rgba(var(--color-bg-rgb), 0.5)", padding: 20, borderRadius: 12, border: "1px solid var(--color-border)" }}>
                   <form onSubmit={handleAddProduct} style={{ display: "flex", gap: 16, flexWrap: "wrap", width: "100%" }}>
@@ -1515,7 +1838,7 @@ export function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {products.map(prod => {
+                        {filteredProducts.map(prod => {
                           const cat = categories.find(c => c.id === prod.categoryId);
                           return (
                             <tr key={prod.id} style={{ background: prod.stock > 0 && prod.stock <= 5 ? "rgba(245, 158, 11, 0.05)" : undefined }}>
@@ -1530,9 +1853,23 @@ export function AdminDashboard() {
                                 <div style={{ fontWeight: 600 }}>{prod.name}</div>
                                 {(prod.brandId || prod.modelId) && (
                                   <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>
-                                    {brands.find(b => b.id === prod.brandId)?.name || ""} {models.find(m => m.id === prod.modelId)?.name || ""}
+                                    {brands.find(b => b.id === prod.brandId)?.name || brands.find(b => b.id === models.find(m => m.id === prod.modelId)?.brand_id)?.name || ""} {models.find(m => m.id === prod.modelId)?.name || ""}
                                   </div>
                                 )}
+                                <div className="tl-product-reference-fields">
+                                  <select aria-label={"Marque de " + prod.name} value={prod.brandId || ""} onChange={e => handleProductReferenceChange(prod.id, { brandId: e.target.value || null })}>
+                                    <option value="">Associer une marque</option>
+                                    {brands.map(brand => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
+                                  </select>
+                                  <select aria-label={"Modèle de " + prod.name} value={prod.modelId || ""} onChange={e => {
+                                    const modelId = e.target.value || null;
+                                    const linkedBrandId = models.find(model => model.id === modelId)?.brand_id;
+                                    handleProductReferenceChange(prod.id, { modelId, ...(linkedBrandId ? { brandId: linkedBrandId } : {}) });
+                                  }}>
+                                    <option value="">Associer un modèle</option>
+                                    {models.map(model => <option key={model.id} value={model.id}>{model.name}</option>)}
+                                  </select>
+                                </div>
                               </td>
                               <td data-label="SKU" style={{ fontSize: 12, fontFamily: "monospace" }}>{prod.sku || "—"}</td>
                               <td style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>{cat?.name || "—"}</td>
@@ -1552,16 +1889,20 @@ export function AdminDashboard() {
                               </td>
                               <td data-label="Vues">{prod.views || 0}</td>
                               <td data-label="Action">
-                              <button className="tl-btn-manage"
-                                style={{ color: "var(--color-error)", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteProduct(prod.id)}>
+                              <div className="tl-product-row-actions">
+                                <button type="button" className="tl-btn-manage" onClick={() => handleOpenProductEditor(prod)} title={isArabic ? "تعديل المنتج" : "Modifier le produit"} aria-label={(isArabic ? "تعديل " : "Modifier ") + prod.name}>
+                                  <Pencil size={14} />
+                                </button>
+                                <button type="button" className="tl-btn-manage" style={{ color: "var(--color-error)", borderColor: "rgba(239, 68, 68, 0.3)" }} onClick={() => handleDeleteProduct(prod.id)} title={isArabic ? "حذف المنتج" : "Supprimer le produit"} aria-label={(isArabic ? "حذف " : "Supprimer ") + prod.name}>
                                   <Trash2 size={14} />
                                 </button>
-                              </td>
+                              </div>
+                            </td>
                             </tr>
                           );
                         })}
-                        {products.length === 0 && (
-                          <tr><td colSpan={9} style={{ textAlign: "center", padding: 20, color: "var(--color-text-secondary)" }}>Aucun produit.</td></tr>
+                        {filteredProducts.length === 0 && (
+                          <tr><td colSpan={10} style={{ textAlign: "center", padding: 32, color: "var(--color-text-secondary)" }}>{search ? (isArabic ? "ما لقيناش منتجات مطابقة." : "Aucun produit ne correspond à cette recherche.") : (isArabic ? "ما فما حتى منتج." : "Aucun produit pour le moment.")}</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1589,7 +1930,7 @@ export function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {products.map(prod => {
+                        {filteredProducts.map(prod => {
                           const sold = shopOrders
                             .filter(o => o.status === "delivered")
                             .reduce((acc, order) => acc + (order.items.find(i => i.id === prod.id)?.quantity || 0), 0);
@@ -1653,7 +1994,7 @@ export function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {occasions.map(occ => (
+                    {filteredOccasions.map(occ => (
                       <tr key={occ.id}>
                         <td>
                           {occ.photos && occ.photos.length > 0 ? (
@@ -1706,6 +2047,39 @@ export function AdminDashboard() {
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {editingProduct && (
+          <div className="tl-modal-overlay tl-product-editor-overlay" onClick={() => setEditingProduct(null)}>
+            <section className="tl-modal-card tl-product-editor" role="dialog" aria-modal="true" aria-labelledby="tl-product-editor-title" onClick={event => event.stopPropagation()}>
+              <div className="tl-modal-header">
+                <div>
+                  <span className="tl-admin-section-kicker">{isArabic ? "إدارة المتجر" : "GESTION DE LA BOUTIQUE"}</span>
+                  <h2 id="tl-product-editor-title">{isArabic ? "تعديل المنتج" : "Modifier le produit"}</h2>
+                </div>
+                <button type="button" className="tl-modal-close" onClick={() => setEditingProduct(null)} aria-label={isArabic ? "إغلاق" : "Fermer"}><X size={18} /></button>
+              </div>
+              <form className="tl-product-editor-form" onSubmit={handleSaveProduct}>
+                <div className="tl-product-editor-grid">
+                  <label>{isArabic ? "اسم المنتج" : "Nom du produit"}<input required value={productEditForm.name} onChange={event => setProductEditForm(form => ({ ...form, name: event.target.value }))} /></label>
+                  <label>SKU<input value={productEditForm.sku} onChange={event => setProductEditForm(form => ({ ...form, sku: event.target.value }))} /></label>
+                  <label>{isArabic ? "سعر البيع (DT)" : "Prix de vente (DT)"}<input type="number" min="0.01" step="0.01" required value={productEditForm.price} onChange={event => setProductEditForm(form => ({ ...form, price: event.target.value }))} /></label>
+                  <label>{isArabic ? "سعر الشراء (DT)" : "Prix d'achat (DT)"}<input type="number" min="0" step="0.01" value={productEditForm.costPrice} onChange={event => setProductEditForm(form => ({ ...form, costPrice: event.target.value }))} /></label>
+                  <label>{isArabic ? "المخزون" : "Stock"}<input type="number" min="0" step="1" required value={productEditForm.stock} onChange={event => setProductEditForm(form => ({ ...form, stock: event.target.value }))} /></label>
+                  <label>{isArabic ? "الفئة" : "Catégorie"}<select required value={productEditForm.categoryId} onChange={event => setProductEditForm(form => ({ ...form, categoryId: event.target.value }))}><option value="">{isArabic ? "اختار فئة" : "Choisir une catégorie"}</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+                  <label>{isArabic ? "الماركة" : "Marque"}<select value={productEditForm.brandId} onChange={event => setProductEditForm(form => ({ ...form, brandId: event.target.value }))}><option value="">{isArabic ? "بدون ماركة" : "Sans marque"}</option>{brands.map(brand => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select></label>
+                  <label>{isArabic ? "الموديل" : "Modèle"}<select value={productEditForm.modelId} onChange={event => setProductEditForm(form => ({ ...form, modelId: event.target.value }))}><option value="">{isArabic ? "بدون موديل" : "Sans modèle"}</option>{models.map(model => <option key={model.id} value={model.id}>{model.name}</option>)}</select></label>
+                  <label className="tl-product-editor-span">{isArabic ? "رابط الصورة" : "URL de l'image"}<input type="url" placeholder="https://…" value={productEditForm.imageUrl} onChange={event => setProductEditForm(form => ({ ...form, imageUrl: event.target.value }))} /></label>
+                  <label className="tl-product-editor-span">{isArabic ? "الوصف" : "Description"}<textarea rows={4} value={productEditForm.description} onChange={event => setProductEditForm(form => ({ ...form, description: event.target.value }))} /></label>
+                  <label className="tl-product-editor-active"><input type="checkbox" checked={productEditForm.active} onChange={event => setProductEditForm(form => ({ ...form, active: event.target.checked }))} />{isArabic ? "ظاهر في المتجر" : "Visible dans la boutique"}</label>
+                </div>
+                <div className="tl-product-editor-actions">
+                  <button type="button" className="tl-btn-manage" onClick={() => setEditingProduct(null)}>{isArabic ? "إلغاء" : "Annuler"}</button>
+                  <button type="submit" className="tl-btn-primary" disabled={isSavingProduct}>{isSavingProduct ? (isArabic ? "جاري الحفظ..." : "Enregistrement…") : <><Save size={16} /> {isArabic ? "حفظ التعديلات" : "Enregistrer"}</>}</button>
+                </div>
+              </form>
+            </section>
           </div>
         )}
 

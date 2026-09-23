@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/services/supabase/client";
 import { ShopCategory, ShopProduct, ShopBrand, ShopModel } from "@/types/shop";
+import { toUrlSlug } from "@/utils/productUrl";
 
 // Internal Caches
 let cachedCategories: ShopCategory[] = [];
 let cachedProducts: ShopProduct[] = [];
 let cachedBrands: ShopBrand[] = [];
 let cachedModels: ShopModel[] = [];
+let brandsCacheLoaded = false;
+let modelsCacheLoaded = false;
 const SHOP_EVENT_NAME = "tele_lab_shop_update";
 
 function notifyShopUpdate() {
@@ -18,7 +21,7 @@ function mapCategory(dbCat: any): ShopCategory {
   return {
     id: dbCat.id,
     name: dbCat.name,
-    slug: dbCat.slug || (dbCat.name ? dbCat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : undefined),
+    slug: dbCat.slug || toUrlSlug(dbCat.name),
     icon: dbCat.icon,
     active: dbCat.active,
     createdAt: dbCat.created_at,
@@ -33,7 +36,7 @@ function mapProduct(dbProd: any): ShopProduct {
     modelId: dbProd.model_id,
     sku: dbProd.sku,
     name: dbProd.name,
-    slug: dbProd.slug || (dbProd.name ? dbProd.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : undefined),
+    slug: dbProd.slug || toUrlSlug(dbProd.name),
     description: dbProd.description,
     price: dbProd.price,
     costPrice: dbProd.cost_price || 0,
@@ -74,6 +77,7 @@ async function fetchBrands() {
     .order("name", { ascending: true });
   if (data) {
     cachedBrands = data;
+    brandsCacheLoaded = true;
     notifyShopUpdate();
   }
 }
@@ -85,6 +89,7 @@ async function fetchModels() {
     .order("name", { ascending: true });
   if (data) {
     cachedModels = data;
+    modelsCacheLoaded = true;
     notifyShopUpdate();
   }
 }
@@ -101,6 +106,20 @@ supabase
   .channel("public:shop_products")
   .on("postgres_changes", { event: "*", schema: "public", table: "shop_products" }, async () => {
     await fetchProducts();
+  })
+  .subscribe();
+
+supabase
+  .channel("public:brands")
+  .on("postgres_changes", { event: "*", schema: "public", table: "brands" }, async () => {
+    await fetchBrands();
+  })
+  .subscribe();
+
+supabase
+  .channel("public:models")
+  .on("postgres_changes", { event: "*", schema: "public", table: "models" }, async () => {
+    await fetchModels();
   })
   .subscribe();
 
@@ -134,6 +153,10 @@ export const shopStore = {
     return cachedModels;
   },
 
+  async refreshData() {
+    await Promise.all([fetchProducts(), fetchBrands(), fetchModels()]);
+  },
+
   // Auto-generate SKU
   generateSku(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -151,6 +174,7 @@ export const shopStore = {
       console.error("Supabase Error (addCategory):", error);
       throw new Error(error.message || "Erreur base de données");
     }
+    await fetchCategories();
   },
 
   async updateCategory(id: string, updates: Partial<ShopCategory>) {
@@ -161,45 +185,72 @@ export const shopStore = {
     
     const { error } = await supabase.from("shop_categories").update(dbUpdates).eq("id", id);
     if (error) throw new Error(error.message);
+    await fetchCategories();
   },
 
   async deleteCategory(id: string) {
     const { error } = await supabase.from("shop_categories").delete().eq("id", id);
     if (error) throw new Error(error.message);
+    await Promise.all([fetchCategories(), fetchProducts()]);
   },
 
   // Product Actions
-  async addProduct(data: Omit<ShopProduct, "id" | "createdAt">) {
-    let finalBrandId = data.brandId || null;
-    let finalModelId = data.modelId || null;
-    
-    // Auto-create brand if it's a string and doesn't match an existing UUID
-    if (finalBrandId && !finalBrandId.includes("-")) {
-      const existing = cachedBrands.find(b => b.name.toLowerCase() === finalBrandId?.toLowerCase());
-      if (existing) {
-        finalBrandId = existing.id;
-      } else {
-        const { data: newBrand, error } = await supabase.from("brands").insert({ name: finalBrandId }).select().single();
-        if (!error && newBrand) {
-          finalBrandId = newBrand.id;
-          cachedBrands.push(newBrand);
-        } else finalBrandId = null;
+  async addProduct(data: Omit<ShopProduct, "id" | "createdAt">, options: { deferRefresh?: boolean } = {}) {
+    const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+    const brandInput = data.brandId?.trim() || "";
+    const modelInput = data.modelId?.trim() || "";
+    let finalBrandId: string | null = brandInput && isUuid(brandInput) ? brandInput : null;
+    let finalModelId: string | null = modelInput && isUuid(modelInput) ? modelInput : null;
+
+    if (brandInput && !isUuid(brandInput)) {
+      let brand = cachedBrands.find(item => item.name.trim().toLocaleLowerCase() === brandInput.toLocaleLowerCase());
+      if (!brand && !brandsCacheLoaded) {
+        const { data: brandRows, error: brandLoadError } = await supabase.from("brands").select("*");
+        if (brandLoadError) throw new Error("Impossible de vérifier la marque : " + brandLoadError.message);
+        cachedBrands = brandRows || [];
+        brandsCacheLoaded = true;
+        brand = cachedBrands.find(item => item.name.trim().toLocaleLowerCase() === brandInput.toLocaleLowerCase());
       }
+      if (!brand) {
+        const { data: createdBrand, error } = await supabase.from("brands").insert({ name: brandInput }).select().single();
+        if (error || !createdBrand) throw new Error("Impossible d’enregistrer la marque : " + (error?.message || "marque manquante"));
+        brand = createdBrand;
+        cachedBrands = [...cachedBrands, createdBrand];
+        brandsCacheLoaded = true;
+      }
+      finalBrandId = brand.id;
+      notifyShopUpdate();
     }
 
-    // Auto-create model if it's a string and doesn't match an existing UUID
-    if (finalModelId && !finalModelId.includes("-")) {
-      const existing = cachedModels.find(m => m.name.toLowerCase() === finalModelId?.toLowerCase());
-      if (existing) {
-        finalModelId = existing.id;
-      } else {
-        const { data: newModel, error } = await supabase.from("models").insert({ name: finalModelId, brand_id: finalBrandId }).select().single();
-        if (!error && newModel) {
-          finalModelId = newModel.id;
-          cachedModels.push(newModel);
-        } else finalModelId = null;
+    let modelRecord = finalModelId ? cachedModels.find(item => item.id === finalModelId) : undefined;
+    if (modelInput && !isUuid(modelInput)) {
+      const findModel = () => cachedModels.find(item => item.name.trim().toLocaleLowerCase() === modelInput.toLocaleLowerCase() && (!finalBrandId || !item.brand_id || item.brand_id === finalBrandId))
+        || cachedModels.find(item => item.name.trim().toLocaleLowerCase() === modelInput.toLocaleLowerCase());
+      modelRecord = findModel();
+      if (!modelRecord && !modelsCacheLoaded) {
+        const { data: modelRows, error: modelLoadError } = await supabase.from("models").select("*");
+        if (modelLoadError) throw new Error("Impossible de vérifier le modèle : " + modelLoadError.message);
+        cachedModels = modelRows || [];
+        modelsCacheLoaded = true;
+        modelRecord = findModel();
       }
+      if (modelRecord && finalBrandId && !modelRecord.brand_id) {
+        const { data: linkedModel, error } = await supabase.from("models").update({ brand_id: finalBrandId }).eq("id", modelRecord.id).select().single();
+        if (error || !linkedModel) throw new Error("Impossible de lier le modèle à la marque : " + (error?.message || "modèle manquant"));
+        modelRecord = linkedModel;
+        cachedModels = cachedModels.map(item => item.id === linkedModel.id ? linkedModel : item);
+      }
+      if (!modelRecord) {
+        const { data: createdModel, error } = await supabase.from("models").insert({ name: modelInput, brand_id: finalBrandId }).select().single();
+        if (error || !createdModel) throw new Error("Impossible d’enregistrer le modèle : " + (error?.message || "modèle manquant"));
+        modelRecord = createdModel;
+        cachedModels = [...cachedModels, createdModel];
+        modelsCacheLoaded = true;
+      }
+      finalModelId = modelRecord.id;
+      notifyShopUpdate();
     }
+    if (!finalBrandId && modelRecord?.brand_id) finalBrandId = modelRecord.brand_id;
 
     const { error } = await supabase.from("shop_products").insert({
       category_id: data.categoryId,
@@ -215,28 +266,37 @@ export const shopStore = {
       active: data.active,
     });
     if (error) throw new Error(error.message);
+    if (!options.deferRefresh) await this.refreshData();
   },
 
   async updateProduct(id: string, updates: Partial<ShopProduct>) {
     const dbUpdates: any = {};
     if (updates.categoryId !== undefined) dbUpdates.category_id = updates.categoryId;
-    if (updates.brandId !== undefined) dbUpdates.brand_id = updates.brandId;
-    if (updates.modelId !== undefined) dbUpdates.model_id = updates.modelId;
+    if (updates.brandId !== undefined) dbUpdates.brand_id = updates.brandId || null;
+    if (updates.modelId !== undefined) dbUpdates.model_id = updates.modelId || null;
     if (updates.sku !== undefined) dbUpdates.sku = updates.sku;
-    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.name !== undefined) {
+      dbUpdates.name = updates.name;
+      dbUpdates.slug = toUrlSlug(updates.name) + "-" + id.slice(0, 6);
+    }
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     if (updates.price !== undefined) dbUpdates.price = updates.price;
+    if (updates.costPrice !== undefined) dbUpdates.cost_price = updates.costPrice;
     if (updates.stock !== undefined) dbUpdates.stock = updates.stock;
     if (updates.imageUrl !== undefined) dbUpdates.image_url = updates.imageUrl;
     if (updates.active !== undefined) dbUpdates.active = updates.active;
 
     const { error } = await supabase.from("shop_products").update(dbUpdates).eq("id", id);
     if (error) throw new Error(error.message);
+    cachedProducts = cachedProducts.map(product => product.id === id ? { ...product, ...updates } : product);
+    notifyShopUpdate();
+    await fetchProducts();
   },
 
   async deleteProduct(id: string) {
     const { error } = await supabase.from("shop_products").delete().eq("id", id);
     if (error) throw new Error(error.message);
+    await fetchProducts();
   },
 
   // Image Upload Action

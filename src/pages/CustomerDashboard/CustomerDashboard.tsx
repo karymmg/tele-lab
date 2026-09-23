@@ -225,7 +225,7 @@ export function CustomerDashboard() {
           </div>
         )}
 
-        <h2 style={{ fontSize: "1.3rem", marginBottom: 20, marginTop: 40, display: "flex", alignItems: "center", gap: 10 }}>
+        <h2 id="orders" style={{ fontSize: "1.3rem", marginBottom: 20, marginTop: 40, display: "flex", alignItems: "center", gap: 10 }}>
           <ShoppingBag size={20} color="#10b981" />
           {isArabic ? "طلباتي من المتجر" : "Mes commandes Boutique"}
         </h2>

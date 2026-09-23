@@ -1,18 +1,24 @@
 import { useEffect } from "react";
 
 /**
- * Updates a CSS custom property --scroll-progress (0 to 1) on :root,
- * and applies a scaleX transform to an element matching selector.
+ * Use a native scroll timeline where available and a coalesced rAF fallback elsewhere.
  */
 export function useScrollProgress(selector = ".tl-scroll-bar") {
   useEffect(() => {
     const bar = document.querySelector<HTMLElement>(selector);
     if (!bar) return;
 
-    let rafId: number;
+    const canUseNativeTimeline =
+      window.matchMedia("(prefers-reduced-motion: no-preference)").matches &&
+      typeof CSS !== "undefined" &&
+      CSS.supports("animation-timeline: scroll(root block)");
+    if (canUseNativeTimeline) return;
 
+    let frameId = 0;
     const update = () => {
-      rafId = requestAnimationFrame(() => {
+      if (frameId) return;
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
         const scrollTop = window.scrollY;
         const docHeight = document.documentElement.scrollHeight - window.innerHeight;
         const progress = docHeight > 0 ? scrollTop / docHeight : 0;
@@ -21,10 +27,12 @@ export function useScrollProgress(selector = ".tl-scroll-bar") {
     };
 
     window.addEventListener("scroll", update, { passive: true });
-    update(); // initial
+    window.addEventListener("resize", update, { passive: true });
+    update();
     return () => {
       window.removeEventListener("scroll", update);
-      cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", update);
+      if (frameId) window.cancelAnimationFrame(frameId);
     };
   }, [selector]);
 }

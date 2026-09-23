@@ -63,6 +63,16 @@ export function Tracking() {
     }
   }, [urlId]);
 
+  useEffect(() => {
+    if (!request?.trackingNumber) return;
+    const refreshTrackedRepair = () => {
+      const updated = repairStore.getByTracking(request.trackingNumber);
+      if (updated) setRequest(updated);
+    };
+    window.addEventListener("tele_lab_store_update", refreshTrackedRepair);
+    return () => window.removeEventListener("tele_lab_store_update", refreshTrackedRepair);
+  }, [request?.trackingNumber]);
+
   function performSearch(term: string) {
     if (!term.trim()) return;
     setIsSearching(true);
@@ -168,38 +178,13 @@ export function Tracking() {
                   </div>
                 </div>
 
-                {/* Live Delivery Map (Shows during delivery phases) */}
                 {["driver_assigned_pickup", "pickup_in_delivery", "driver_assigned_return", "return_in_delivery"].includes(request.status) && (
-                  <div className="tl-live-delivery">
-                    <div className="tl-map-header">
-                      <div className="tl-map-header-left">
-                        <h3>VOTRE TÉLÉPHONE EST EN ROUTE</h3>
-                        <p>Le livreur est actuellement en chemin.</p>
-                      </div>
-                      <div className="tl-map-eta">
-                        <span>Arrivée estimée</span>
-                        <strong>18:20 – 18:35</strong>
-                      </div>
-                    </div>
-                    <div className="tl-map-viz">
-                      <div className="tl-map-grid"></div>
-                      <div className="tl-map-route">
-                        <div className="tl-map-route-fill" style={{ width: "65%" }}></div>
-                        <div className="tl-map-marker is-active">
-                          <span className="tl-map-marker-label">TELE LAB</span>
-                        </div>
-                        <div className="tl-map-vehicle" style={{ left: "65%" }}>
-                          <Truck size={16} />
-                        </div>
-                        <div className="tl-map-marker">
-                          <span className="tl-map-marker-label">VOTRE DOMICILE</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="tl-map-footer">
-                      <button className="tl-btn-contact-driver">
-                        <Phone size={16} /> Contacter le livreur
-                      </button>
+                  <div className="tl-tracking-delivery-note">
+                    <Truck size={22} />
+                    <div>
+                      <h3>MISE À JOUR DE LIVRAISON</h3>
+                      <p>Étape confirmée : <strong>{currentStatusData.label}</strong></p>
+                      <p>Les prochaines mises à jour de votre prise en charge et de votre retour apparaîtront ici.</p>
                     </div>
                   </div>
                 )}
@@ -236,7 +221,7 @@ export function Tracking() {
                       <div className="tl-payment-bar">
                         <div 
                           className="tl-payment-fill" 
-                          style={{ width: ["picked_up", "received_at_shop", "repair_in_progress", "repair_ready", "return_in_delivery"].includes(request.status) ? "30%" : request.status === "delivered_to_customer" ? "100%" : "0%" }}
+                          style={{ width: request.paymentStatus === "fully_paid" ? "100%" : request.paymentStatus === "deposit_paid" ? "30%" : "0%" }}
                         ></div>
                       </div>
                     </div>

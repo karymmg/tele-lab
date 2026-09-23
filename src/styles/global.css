@@ -90,22 +90,22 @@ button {
    ========================================================================== */
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(40px); }
+  from { opacity: 0; transform: translateY(18px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeInLeft {
-  from { opacity: 0; transform: translateX(-40px); }
+  from { opacity: 0; transform: translateX(-24px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes fadeInRight {
-  from { opacity: 0; transform: translateX(40px); }
+  from { opacity: 0; transform: translateX(24px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.92); }
+  from { opacity: 0; transform: scale(0.94); }
   to   { opacity: 1; transform: scale(1); }
 }
 
@@ -125,30 +125,30 @@ button {
 
 .reveal {
   opacity: 0;
-  transform: translateY(36px);
-  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translate3d(0, 34px, 0) scale(0.975);
+  transition: opacity 560ms cubic-bezier(0.16, 1, 0.3, 1),
+              transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .reveal-left {
   opacity: 0;
-  transform: translateX(-48px);
-  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translate3d(-38px, 0, 0) rotate(-1deg);
+  transition: opacity 560ms cubic-bezier(0.16, 1, 0.3, 1),
+              transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .reveal-right {
   opacity: 0;
-  transform: translateX(48px);
-  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translate3d(38px, 0, 0) rotate(1deg);
+  transition: opacity 560ms cubic-bezier(0.16, 1, 0.3, 1),
+              transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .reveal-scale {
   opacity: 0;
-  transform: scale(0.90);
-  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: scale(0.94);
+  transition: opacity 560ms cubic-bezier(0.16, 1, 0.3, 1),
+              transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .reveal.is-visible,
@@ -161,31 +161,89 @@ button {
 
 /* Staggered children */
 .stagger > *:nth-child(1) { transition-delay: 0ms; }
-.stagger > *:nth-child(2) { transition-delay: 80ms; }
-.stagger > *:nth-child(3) { transition-delay: 160ms; }
-.stagger > *:nth-child(4) { transition-delay: 240ms; }
-.stagger > *:nth-child(5) { transition-delay: 320ms; }
-.stagger > *:nth-child(6) { transition-delay: 400ms; }
+.stagger > *:nth-child(2) { transition-delay: 40ms; }
+.stagger > *:nth-child(3) { transition-delay: 80ms; }
+.stagger > *:nth-child(4) { transition-delay: 120ms; }
+.stagger > *:nth-child(5) { transition-delay: 160ms; }
+.stagger > *:nth-child(6) { transition-delay: 200ms; }
 
-/* Hero — page load animation (no IntersectionObserver needed) */
+/* Hero — short page-load entrance */
 .animate-in {
-  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeInUp 520ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;
 }
 
-.delay-1 { animation-delay: 80ms; }
-.delay-2 { animation-delay: 200ms; }
-.delay-3 { animation-delay: 340ms; }
-.delay-4 { animation-delay: 480ms; }
+.delay-1 { animation-delay: 60ms; }
+.delay-2 { animation-delay: 120ms; }
+.delay-3 { animation-delay: 180ms; }
+.delay-4 { animation-delay: 240ms; }
 
-html {
-  scroll-behavior: smooth;
+@media (max-width: 768px) {
+  html,
+  body {
+    scroll-behavior: auto;
+    overscroll-behavior-y: auto;
+    touch-action: auto;
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translate3d(0, 36px, 0) scale(0.975);
+    transition: opacity 560ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .reveal-left,
+  .reveal-right {
+    opacity: 0;
+    transform: translate3d(18px, 26px, 0) rotate(1deg);
+    transition: opacity 560ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .reveal-left { transform: translate3d(-18px, 26px, 0) rotate(-1deg); }
+
+  .reveal-scale {
+    opacity: 0;
+    transform: scale(0.94);
+    transition: opacity 560ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .reveal.is-visible,
+  .reveal-left.is-visible,
+  .reveal-right.is-visible,
+  .reveal-scale.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .stagger > *:nth-child(1) { transition-delay: 0ms; }
+  .stagger > *:nth-child(2) { transition-delay: 55ms; }
+  .stagger > *:nth-child(3) { transition-delay: 110ms; }
+  .stagger > *:nth-child(4) { transition-delay: 165ms; }
+  .stagger > *:nth-child(5) { transition-delay: 220ms; }
+  .stagger > *:nth-child(6) { transition-delay: 275ms; }
+
+  .tl-home .animate-in { animation-duration: 460ms; }
+  .tl-home .delay-1 { animation-delay: 50ms; }
+  .tl-home .delay-2 { animation-delay: 100ms; }
+  .tl-home .delay-3 { animation-delay: 150ms; }
+  .tl-home .delay-4 { animation-delay: 200ms; }
+
+  .tl-scroll-bar {
+    display: block;
+    height: 3px;
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(var(--color-primary-rgb), 0.52);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

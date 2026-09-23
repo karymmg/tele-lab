@@ -74,6 +74,13 @@ supabase
   .subscribe();
 
 supabase
+  .channel("public:repair_status_history")
+  .on("postgres_changes", { event: "*", schema: "public", table: "repair_status_history" }, async () => {
+    await fetchAllFromSupabase();
+  })
+  .subscribe();
+
+supabase
   .channel("public:drivers")
   .on("postgres_changes", { event: "*", schema: "public", table: "drivers" }, async () => {
     await fetchDriversFromSupabase();
@@ -118,10 +125,12 @@ export const repairStore = {
   
   async addDriver(name: string, phone: string, zone: string) {
     await supabase.from("drivers").insert({ name, phone, zone });
+    await fetchDriversFromSupabase();
   },
 
   async deleteDriver(id: string) {
     await supabase.from("drivers").delete().eq("id", id);
+    await fetchDriversFromSupabase();
   },
 
   getAll(): RepairRequest[] {
@@ -219,6 +228,7 @@ export const repairStore = {
       note,
       changed_by: changedBy
     });
+    await fetchAllFromSupabase();
     return { ...req, status: newStatus, statusHistory: newHistory };
   },
 
@@ -248,6 +258,7 @@ export const repairStore = {
       note,
       changed_by: changedBy
     });
+    await fetchAllFromSupabase();
     return { ...req, price: pricing.total, depositAmount: pricing.deposit, remainingAmount: pricing.remaining, status: newStatus, statusHistory: newHistory };
   },
 
@@ -260,6 +271,7 @@ export const repairStore = {
     // Update local cache manually or wait for realtime subscription to kick in
     cachedRequests = cachedRequests.filter(r => r.id !== id);
     notifyUpdate();
+    await fetchAllFromSupabase();
   },
 
   async assignDriver(id: string, driverName: string, driverId?: string) {
@@ -283,6 +295,7 @@ export const repairStore = {
       note,
       changed_by: changedBy
     });
+    await fetchAllFromSupabase();
     return { ...req, driverId, driverName, status: newStatus, statusHistory: newHistory };
   },
 
@@ -305,6 +318,7 @@ export const repairStore = {
       note,
       changed_by: changedBy
     });
+    await fetchAllFromSupabase();
     return { ...req, technicianName, statusHistory: newHistory };
   },
 
@@ -330,6 +344,7 @@ export const repairStore = {
       note,
       changed_by: changedBy
     });
+    await fetchAllFromSupabase();
     return { ...req, paymentStatus: newPaymentStatus, statusHistory: newHistory };
   },
 };

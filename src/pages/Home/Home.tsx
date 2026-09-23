@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -64,25 +64,109 @@ const DEFAULT_HERO_SLIDES = [
 
 export function Home() {
   const { t } = useTranslation();
+  const homeRef = useRef<HTMLElement | null>(null);
 
   // Scroll hooks
   useScrollReveal();
-  useParallax(".tl-hero__img.is-active", 0.12);
+  useParallax(".tl-hero__img", 0.12);
   useScrollProgress();
+
+  useEffect(() => {
+    const home = homeRef.current;
+    if (!home) return;
+
+    let frame = 0;
+    let touchFrame = 0;
+    let pointerX = 0;
+    let pointerY = 0;
+    let pointerActive = false;
+    let touchResetTimer = 0;
+
+    const updateSpotlight = () => {
+      frame = 0;
+      if (!pointerActive) return;
+      const bounds = home.getBoundingClientRect();
+      home.style.setProperty("--tl-cursor-x", String(pointerX - bounds.left) + "px");
+      home.style.setProperty("--tl-cursor-y", String(pointerY - bounds.top) + "px");
+      home.classList.add("has-pointer");
+    };
+    const queueSpotlight = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(updateSpotlight);
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      pointerActive = true;
+      pointerX = event.clientX;
+      pointerY = event.clientY;
+      queueSpotlight();
+    };
+    const onPointerLeave = () => {
+      pointerActive = false;
+      home.classList.remove("has-pointer");
+    };
+    const onTouchStart = (event: PointerEvent) => {
+      if (event.pointerType !== "touch") return;
+      home.style.setProperty("--tl-touch-x", String(event.clientX) + "px");
+      home.style.setProperty("--tl-touch-y", String(event.clientY) + "px");
+      home.classList.remove("has-touch");
+      if (touchFrame) cancelAnimationFrame(touchFrame);
+      touchFrame = requestAnimationFrame(() => {
+        home.classList.add("has-touch");
+        touchFrame = 0;
+      });
+      window.clearTimeout(touchResetTimer);
+      touchResetTimer = window.setTimeout(() => home.classList.remove("has-touch"), 760);
+    };
+    home.addEventListener("pointermove", onPointerMove, { passive: true });
+    home.addEventListener("pointerleave", onPointerLeave);
+    home.addEventListener("pointerdown", onTouchStart, { passive: true });
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      if (touchFrame) cancelAnimationFrame(touchFrame);
+      window.clearTimeout(touchResetTimer);
+      home.removeEventListener("pointermove", onPointerMove);
+      home.removeEventListener("pointerleave", onPointerLeave);
+      home.removeEventListener("pointerdown", onTouchStart);
+    };
+  }, []);
 
   // Hero carousel
   const heroSlides = DEFAULT_HERO_SLIDES;
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 5000);
-    return () => clearInterval(timer);
+    const heroFrame = document.querySelector(".tl-hero__img-frame");
+    if (!heroFrame) return;
+
+    let timer = 0;
+    let isVisible = false;
+    const syncTimer = () => {
+      if (timer) window.clearInterval(timer);
+      timer = 0;
+      if (isVisible && !document.hidden) {
+        timer = window.setInterval(() => {
+          setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+        }, 5000);
+      }
+    };
+    const observer = new IntersectionObserver(([entry]) => {
+      isVisible = entry.isIntersecting;
+      syncTimer();
+    }, { threshold: 0.15 });
+    const onVisibilityChange = () => syncTimer();
+
+    observer.observe(heroFrame);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (timer) window.clearInterval(timer);
+    };
   }, [heroSlides.length]);
 
   return (
-    <main className="tl-home">
+    <main ref={homeRef} className="tl-home">
       {/* Scroll progress bar */}
       <div className="tl-scroll-bar" aria-hidden="true" />
 
@@ -100,15 +184,12 @@ export function Home() {
             </div>
 
             <h1 className="tl-hero__title animate-in delay-1">
-              <span>Réparation Rapide</span>
-              <span className="tl-hero__title-accent">
-                & Boutique Tech
-              </span>
+              <span>Réparation de téléphone</span>
+              <span className="tl-hero__title-accent">à domicile</span>
             </h1>
 
             <p className="tl-hero__subtitle animate-in delay-2" style={{ fontSize: 17, maxWidth: 600, lineHeight: 1.6 }}>
-              <strong>Réparation de téléphones à domicile</strong> avec déplacement <span style={{ color: "var(--color-primary-dark)", fontWeight: 700 }}>100% Gratuit</span>.<br/>
-              Découvrez aussi notre <strong>Boutique</strong> de smartphones d'occasion et accessoires (Livraison : 7 DT).
+              <strong>Prise en charge à domicile</strong>, collecte et retour gratuits. Un suivi clair à chaque étape, de la demande jusqu’à la restitution de votre téléphone.
             </p>
 
             {/* Two CTA buttons — Repair + Shop */}
@@ -118,12 +199,11 @@ export function Home() {
                   <Wrench size={18} /> {t("hero.ctaPrimary")}
                 </button>
               </Link>
-              <Link to="/shop">
+              <Link to="/tracking">
                 <button className="tl-btn-shop">
-                  <Store size={18} /> Visiter la Boutique
+                  <Search size={18} /> Suivre ma réparation
                 </button>
-              </Link>
-            </div>
+              </Link>            </div>
 
             <div className="tl-hero__badges animate-in delay-4">
               <span className="tl-badge"><Star size={13} /> {t("hero.badge")}</span>
@@ -176,7 +256,7 @@ export function Home() {
               </div>
               <div className="tl-dual-card__content">
                 <h2>Réparation</h2>
-                <p>Mon appareil est en panne. (Écrans, batteries, micro-soudure à domicile)</p>
+                <p>Mon téléphone est en panne. Demandez une collecte à domicile et suivez sa réparation jusqu’au retour.</p>
               </div>
               <ArrowRight size={28} className="tl-dual-card__arrow" />
             </Link>

@@ -1,30 +1,64 @@
 import { useEffect } from "react";
 
 /**
- * Applies a subtle parallax translateY to an element identified by selector
- * based on scroll position. Factor controls strength (e.g. 0.15 = 15% speed).
+ * Follow page scroll in both directions using a native view timeline where
+ * available. A small rAF fallback updates one shared hero offset on older browsers.
  */
-export function useParallax(
-  selector: string,
-  factor = 0.15
-) {
+export function useParallax(selector: string, factor = 0.15) {
   useEffect(() => {
-    const el = document.querySelector<HTMLElement>(selector);
-    if (!el) return;
+    const image = document.querySelector<HTMLElement>(selector);
+    const frame = image?.closest<HTMLElement>(".tl-hero__img-frame") ?? image;
+    if (!frame) return;
 
-    let rafId: number;
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: no-preference)");
+    const compactQuery = window.matchMedia("(max-width: 768px)");
+    const supportsViewTimeline =
+      typeof CSS !== "undefined" &&
+      CSS.supports("animation-timeline: view(block)") &&
+      CSS.supports("animation-range: entry 0% exit 100%");
 
-    const onScroll = () => {
-      rafId = requestAnimationFrame(() => {
-        const scrollY = window.scrollY;
-        el.style.transform = `translateY(${scrollY * factor}px)`;
-      });
+    if (!motionQuery.matches || supportsViewTimeline) {
+      frame.style.removeProperty("--tl-parallax-y");
+      return;
+    }
+
+    let frameId = 0;
+    let isVisible = false;
+    const observer = new IntersectionObserver(([entry]) => {
+      isVisible = entry.isIntersecting;
+      if (isVisible) queueUpdate();
+    }, { rootMargin: "80px 0px" });
+
+    const update = () => {
+      frameId = 0;
+      if (!isVisible || !motionQuery.matches) return;
+
+      const maxOffset = compactQuery.matches ? 10 : 70;
+      const offset = Math.min(maxOffset, window.scrollY * factor);
+      frame.style.setProperty("--tl-parallax-y", String(offset.toFixed(2)) + "px");
     };
 
-    window.addEventListener("scroll", onScroll, { passive: true });
+    const queueUpdate = () => {
+      if (!isVisible || frameId || !motionQuery.matches) return;
+      frameId = window.requestAnimationFrame(update);
+    };
+    const onMotionChange = () => {
+      if (!motionQuery.matches) frame.style.removeProperty("--tl-parallax-y");
+      else queueUpdate();
+    };
+
+    observer.observe(frame);
+    window.addEventListener("scroll", queueUpdate, { passive: true });
+    window.addEventListener("resize", queueUpdate, { passive: true });
+    motionQuery.addEventListener("change", onMotionChange);
+
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(rafId);
+      observer.disconnect();
+      window.removeEventListener("scroll", queueUpdate);
+      window.removeEventListener("resize", queueUpdate);
+      motionQuery.removeEventListener("change", onMotionChange);
+      if (frameId) window.cancelAnimationFrame(frameId);
+      frame.style.removeProperty("--tl-parallax-y");
     };
   }, [selector, factor]);
 }

@@ -152,6 +152,7 @@ export const occasionStore = {
       console.error("Supabase Error (addOccasion):", error);
       throw new Error(error.message);
     }
+    await fetchOccasions();
   },
 
   async updateOccasionStatus(id: string, status: OccasionStatus) {
@@ -178,6 +179,7 @@ export const occasionStore = {
     // Usually called once per session on App load
     const { error } = await supabase.rpc("log_site_visit");
     if (error) console.error("Erreur log visite:", error);
+    await fetchSiteVisits();
   },
 
   async incrementViews(productId: string, isOccasion: boolean) {
@@ -186,6 +188,7 @@ export const occasionStore = {
       p_is_occasion: isOccasion
     });
     if (error) console.error("Erreur increment vues:", error);
+    await fetchOccasions();
   },
 };
 

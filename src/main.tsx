@@ -5,6 +5,7 @@ import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import "./i18n";
 import "./styles/global.css";
+import "./styles/site-polish.css";
 
 // Dismiss splash screen after React mounts
 function dismissSplash() {

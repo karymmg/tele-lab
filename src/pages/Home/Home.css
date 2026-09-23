@@ -6,6 +6,9 @@
 
 .tl-home {
   display: flex;
+  position: relative;
+  --tl-cursor-x: 50%;
+  --tl-cursor-y: 0px;
   flex-direction: column;
 }
 
@@ -46,8 +49,9 @@
   transform-origin: left center;
   transform: scaleX(0);
   z-index: 1000;
-  box-shadow: var(--neon-glow);
-  transition: transform 0.1s linear;
+  opacity: 1;
+  pointer-events: none;
+  box-shadow: 0 0 14px rgba(var(--color-primary-rgb), 0.5);
 }
 
 /* ── Shared: Eyebrow label ───────────────────────────────────────────────── */
@@ -299,7 +303,6 @@
   display: block;
   opacity: 0;
   transition: opacity 1s ease;
-  will-change: opacity;
 }
 .tl-hero__img.is-active {
   opacity: 1;
@@ -358,6 +361,16 @@
   box-shadow: 0 0 8px rgba(var(--color-primary-rgb), 0.4);
 }
 
+
+@media (min-width: 769px) and (prefers-reduced-motion: no-preference) {
+  .tl-hero__img {
+    --tl-hero-image-scale: 1.055;
+    --tl-hero-parallax-start: -14px;
+    --tl-hero-parallax-end: 14px;
+    transform: translate3d(0, var(--tl-parallax-y, 0px), 0) scale(var(--tl-hero-image-scale));
+  }
+  .tl-hero__img.is-active { will-change: transform, opacity; }
+}
 
 @media (max-width: 1024px) {
   .tl-hero__inner { grid-template-columns: 1fr; gap: 48px; }
@@ -950,4 +963,175 @@
   }
   .tl-final-cta__btns a { width: 100%; }
   .tl-final-cta__btns button { width: 100%; justify-content: center; }
+}
+
+
+.tl-home.has-pointer {
+  background-image: radial-gradient(500px circle at var(--tl-cursor-x) var(--tl-cursor-y), rgba(var(--color-primary-rgb), 0.14), transparent 74%);
+  background-repeat: no-repeat;
+}
+@media (max-width: 768px) {
+  .tl-hero__img {
+    --tl-hero-image-scale: 1.09;
+    --tl-hero-parallax-start: -8px;
+    --tl-hero-parallax-end: 8px;
+    transform: translate3d(0, var(--tl-parallax-y, 0px), 0) scale(var(--tl-hero-image-scale));
+  }
+  .tl-hero__img.is-active { will-change: opacity; }
+  .tl-scroll-bar { display: block; height: 3px; opacity: 1; box-shadow: 0 0 12px rgba(var(--color-primary-rgb), 0.52); }
+}
+
+[dir="rtl"] .tl-scroll-bar { transform-origin: right center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tl-home.has-pointer { background-image: none; }
+}
+
+
+/* Responsive scroll, mouse and touch feedback */
+.tl-home .tl-btn-primary,
+.tl-home .tl-btn-shop,
+.tl-home .tl-dual-card,
+.tl-home .tl-service-card,
+.tl-home .tl-stat,
+.tl-home .tl-hero__img-frame {
+  transform-origin: center;
+  transition: transform 220ms var(--ease-spring), box-shadow 220ms ease, border-color 220ms ease, filter 220ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.tl-home .tl-btn-primary:active,
+.tl-home .tl-btn-shop:active {
+  transform: scale(0.95);
+  filter: brightness(1.12) saturate(1.12);
+  box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.16), 0 12px 28px rgba(var(--color-primary-rgb), 0.26);
+}
+.tl-home .tl-dual-card:active,
+.tl-home .tl-service-card:active,
+.tl-home .tl-stat:active {
+  transform: translateY(-3px) scale(0.975);
+  border-color: var(--color-primary);
+  box-shadow: 0 14px 34px rgba(var(--color-primary-rgb), 0.2);
+}
+.tl-home .tl-hero__img-frame:active {
+  transform: scale(0.985);
+  border-color: var(--color-primary);
+}
+.tl-home.has-touch::after {
+  content: "";
+  position: fixed;
+  left: var(--tl-touch-x, 50vw);
+  top: var(--tl-touch-y, 50vh);
+  z-index: 1100;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(var(--color-primary-rgb), 0.75);
+  border-radius: 50%;
+  box-shadow: 0 0 14px rgba(var(--color-primary-rgb), 0.45);
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.25);
+  animation: tl-touch-ripple 720ms var(--ease-smooth) both;
+}
+@keyframes tl-touch-ripple {
+  0% { opacity: 0.95; transform: translate(-50%, -50%) scale(0.25); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(5.2); }
+}
+@media (hover: hover) and (pointer: fine) {
+  .tl-home .tl-btn-primary:hover,
+  .tl-home .tl-btn-shop:hover { filter: brightness(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tl-home.has-touch::after { animation: none; opacity: 0; }
+}
+
+/* Scroll-linked motion runs in the compositor where the browser supports it. */
+@keyframes tl-scroll-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes tl-hero-scroll-parallax {
+  from { transform: translate3d(0, var(--tl-hero-parallax-start, -14px), 0) scale(var(--tl-hero-image-scale, 1.055)); }
+  to { transform: translate3d(0, var(--tl-hero-parallax-end, 14px), 0) scale(var(--tl-hero-image-scale, 1.055)); }
+}
+
+@supports (animation-timeline: scroll(root block)) {
+  @media (prefers-reduced-motion: no-preference) {
+    .tl-scroll-bar {
+      animation: tl-scroll-progress linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+}
+
+@supports (animation-timeline: view(block)) and (animation-range: entry 0% exit 100%) {
+  @media (prefers-reduced-motion: no-preference) {
+    .tl-hero__img.is-active {
+      animation: tl-hero-scroll-parallax linear both;
+      animation-timeline: view(block);
+      animation-range: entry 0% exit 100%;
+      will-change: transform, opacity;
+    }
+  }
+}
+
+
+/* Stronger, directional reveals that remain lightweight during touch scroll. */
+@media (prefers-reduced-motion: no-preference) {
+  .tl-home .reveal {
+    opacity: 0;
+    transform: translate3d(0, 56px, 0) scale(0.92);
+    transition: opacity 680ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 680ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .tl-home .reveal-left {
+    opacity: 0;
+    transform: translate3d(-68px, 22px, 0) rotate(-1.5deg) scale(0.94);
+    transition: opacity 680ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 680ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .tl-home .reveal-right {
+    opacity: 0;
+    transform: translate3d(68px, 22px, 0) rotate(1.5deg) scale(0.94);
+    transition: opacity 680ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 680ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .tl-home .reveal-scale {
+    opacity: 0;
+    transform: scale(0.88);
+    transition: opacity 680ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 680ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .tl-home .reveal.is-visible,
+  .tl-home .reveal-left.is-visible,
+  .tl-home .reveal-right.is-visible,
+  .tl-home .reveal-scale.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .tl-home .reveal {
+    transform: translate3d(0, 44px, 0) scale(0.93);
+    transition-duration: 560ms;
+  }
+
+  .tl-home .reveal-left {
+    transform: translate3d(-28px, 26px, 0) rotate(-1deg) scale(0.95);
+    transition-duration: 560ms;
+  }
+
+  .tl-home .reveal-right {
+    transform: translate3d(28px, 26px, 0) rotate(1deg) scale(0.95);
+    transition-duration: 560ms;
+  }
+
+  .tl-home .reveal-scale {
+    transform: scale(0.9);
+    transition-duration: 560ms;
+  }
 }

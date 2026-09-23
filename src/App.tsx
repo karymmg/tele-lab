@@ -1,25 +1,24 @@
 import { Routes, Route } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { Home } from "@/pages/Home/Home";
-import { RequestRepair } from "@/pages/RequestRepair/RequestRepair";
-import { Tracking } from "@/pages/Tracking/Tracking";
-import { Login } from "@/pages/Login/Login";
-import { Signup } from "@/pages/Signup/Signup";
 import { Suspense, lazy } from "react";
-import { CustomerDashboard } from "@/pages/CustomerDashboard/CustomerDashboard";
+const Home = lazy(() => import("@/pages/Home/Home").then(m => ({ default: m.Home })));
+const RequestRepair = lazy(() => import("@/pages/RequestRepair/RequestRepair").then(m => ({ default: m.RequestRepair })));
+const Tracking = lazy(() => import("@/pages/Tracking/Tracking").then(m => ({ default: m.Tracking })));
+const Login = lazy(() => import("@/pages/Login/Login").then(m => ({ default: m.Login })));
+const Signup = lazy(() => import("@/pages/Signup/Signup").then(m => ({ default: m.Signup })));
 const AdminDashboardLazy = lazy(() => import("@/pages/AdminDashboard/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
 const CustomerDashboardLazy = lazy(() => import("@/pages/CustomerDashboard/CustomerDashboard").then(m => ({ default: m.CustomerDashboard })));
-import { Shop } from "@/pages/Shop/Shop";
-import { AddOccasionForm } from "@/pages/Shop/AddOccasionForm";
-import { OccasionDetail } from "@/pages/Shop/OccasionDetail";
-import { NotFound } from "@/pages/NotFound/NotFound";
-import { Catalogue } from "@/pages/Catalogue/Catalogue";
-import { ProductDetail } from "@/pages/Catalogue/ProductDetail";
-import { CategoryDetail } from "@/pages/Catalogue/CategoryDetail";
-import { BrandDetail } from "@/pages/Catalogue/BrandDetail";
-import { ModelDetail } from "@/pages/Catalogue/ModelDetail";
-import { Search } from "@/pages/Search/Search";
+const Shop = lazy(() => import("@/pages/Shop/Shop").then(m => ({ default: m.Shop })));
+const AddOccasionForm = lazy(() => import("@/pages/Shop/AddOccasionForm").then(m => ({ default: m.AddOccasionForm })));
+const OccasionDetail = lazy(() => import("@/pages/Shop/OccasionDetail").then(m => ({ default: m.OccasionDetail })));
+const NotFound = lazy(() => import("@/pages/NotFound/NotFound").then(m => ({ default: m.NotFound })));
+const Catalogue = lazy(() => import("@/pages/Catalogue/Catalogue").then(m => ({ default: m.Catalogue })));
+const ProductDetail = lazy(() => import("@/pages/Catalogue/ProductDetail").then(m => ({ default: m.ProductDetail })));
+const CategoryDetail = lazy(() => import("@/pages/Catalogue/CategoryDetail").then(m => ({ default: m.CategoryDetail })));
+const BrandDetail = lazy(() => import("@/pages/Catalogue/BrandDetail").then(m => ({ default: m.BrandDetail })));
+const ModelDetail = lazy(() => import("@/pages/Catalogue/ModelDetail").then(m => ({ default: m.ModelDetail })));
+const Search = lazy(() => import("@/pages/Search/Search"));
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useHashScroll } from "@/hooks/useHashScroll";
 import { occasionStore } from "@/services/occasionStore";
@@ -32,11 +31,12 @@ export default function App() {
   const theme = useTheme((state) => state.theme);
 
   useEffect(() => {
-    // Set initial theme class on document
     document.documentElement.setAttribute("data-theme", theme);
-    // Log site visit on app load for analytics
-    occasionStore.logSiteVisit();
   }, [theme]);
+
+  useEffect(() => {
+    occasionStore.logSiteVisit();
+  }, []);
 
   return (
     <>
@@ -45,7 +45,9 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/products" element={<Catalogue />} />
+          <Route path="/shop/category/:categorySlug/:brandSlug/:modelSlug/:productSlug" element={<ProductDetail />} />
           <Route path="/shop/category/:categorySlug/:productSlug" element={<ProductDetail />} />
+          <Route path="/shop/:productSlug" element={<ProductDetail />} />
           <Route path="/category/:slug" element={<CategoryDetail />} />
           <Route path="/brand/:slug" element={<BrandDetail />} />
           <Route path="/model/:slug" element={<ModelDetail />} />

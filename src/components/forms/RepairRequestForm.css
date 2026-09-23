@@ -24,7 +24,7 @@
   left: 36px;
   right: 36px;
   height: 2px;
-  background: rgba(18, 48, 68, 0.4);
+  background: rgba(var(--color-border-rgb), 0.4);
   z-index: 0;
 }
 
@@ -43,7 +43,7 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  border: 2px solid rgba(18, 48, 68, 0.6);
+  border: 2px solid rgba(var(--color-border-rgb), 0.6);
   background: var(--color-bg);
   color: var(--color-text-secondary);
   display: flex;
@@ -57,9 +57,9 @@
 
 .tl-stepper-item.is-active .tl-stepper-bubble {
   border-color: var(--color-primary);
-  background: rgba(0, 140, 255, 0.15);
+  background: rgba(var(--color-primary-rgb), 0.15);
   color: var(--color-primary-dark);
-  box-shadow: 0 0 16px rgba(0, 140, 255, 0.3);
+  box-shadow: 0 0 16px rgba(var(--color-primary-rgb), 0.3);
   transform: scale(1.1);
 }
 
@@ -84,13 +84,13 @@
 
 /* ── Form Card Wrapper (Glass) ───────────────────────────────────────────── */
 .tl-form-card {
-  background: rgba(7, 16, 22, 0.6);
+  background: rgba(var(--color-bg-secondary-rgb), 0.6);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(18, 48, 68, 0.5);
+  border: 1px solid rgba(var(--color-border-rgb), 0.5);
   border-radius: 20px;
   padding: 40px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255,255,255,0.02);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(var(--color-text-rgb), 0.02);
   animation: modalFadeIn 0.4s var(--ease-spring);
 }
 
@@ -101,7 +101,7 @@
 
 .tl-form-card__header {
   margin-bottom: 32px;
-  border-bottom: 1px dashed rgba(18, 48, 68, 0.4);
+  border-bottom: 1px dashed rgba(var(--color-border-rgb), 0.4);
   padding-bottom: 20px;
 }
 
@@ -132,7 +132,7 @@
 }
 
 .tl-type-card {
-  border: 2px solid rgba(18, 48, 68, 0.5);
+  border: 2px solid rgba(var(--color-border-rgb), 0.5);
   border-radius: 16px;
   padding: 32px 24px;
   cursor: pointer;
@@ -142,21 +142,21 @@
   gap: 16px;
   text-align: center;
   align-items: center;
-  background: rgba(3, 7, 10, 0.5);
+  background: rgba(var(--color-bg-rgb), 0.5);
   position: relative;
   overflow: hidden;
 }
 
 .tl-type-card:hover {
-  border-color: rgba(0, 140, 255, 0.4);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
   transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(0, 140, 255, 0.08);
+  box-shadow: 0 12px 32px rgba(var(--color-primary-rgb), 0.08);
 }
 
 .tl-type-card.is-selected {
   border-color: var(--color-primary);
-  background: rgba(0, 140, 255, 0.05);
-  box-shadow: 0 0 0 2px var(--color-primary), 0 12px 32px rgba(0, 140, 255, 0.15);
+  background: rgba(var(--color-primary-rgb), 0.05);
+  box-shadow: 0 0 0 2px var(--color-primary), 0 12px 32px rgba(var(--color-primary-rgb), 0.15);
 }
 
 .tl-type-card__icon {
@@ -210,8 +210,8 @@
 .tl-form-group select,
 .tl-form-group textarea {
   padding: 14px 18px;
-  background: rgba(3, 7, 10, 0.6);
-  border: 1px solid rgba(18, 48, 68, 0.6);
+  background: rgba(var(--color-bg-rgb), 0.6);
+  border: 1px solid rgba(var(--color-border-rgb), 0.6);
   border-radius: 10px;
   font-family: inherit;
   font-size: 15px;
@@ -221,7 +221,7 @@
 
 .tl-form-group input::placeholder,
 .tl-form-group textarea::placeholder {
-  color: rgba(167, 176, 184, 0.5);
+  color: rgba(var(--color-text-secondary-rgb), 0.5);
 }
 
 .tl-form-group input:focus,
@@ -229,8 +229,8 @@
 .tl-form-group textarea:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 140, 255, 0.15);
-  background: #03070A;
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
+  background: var(--color-bg);
 }
 
 /* ── Problem Pills Selection ─────────────────────────────────────────────── */
@@ -246,9 +246,9 @@
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  border: 1px solid rgba(18, 48, 68, 0.5);
+  border: 1px solid rgba(var(--color-border-rgb), 0.5);
   border-radius: 10px;
-  background: rgba(3, 7, 10, 0.5);
+  background: rgba(var(--color-bg-rgb), 0.5);
   color: var(--color-text-secondary);
   font-size: 14px;
   font-weight: 500;
@@ -258,14 +258,14 @@
 }
 
 .tl-problem-btn:hover {
-  border-color: rgba(0, 140, 255, 0.4);
-  background: rgba(0, 140, 255, 0.05);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
+  background: rgba(var(--color-primary-rgb), 0.05);
   color: var(--color-text);
 }
 
 .tl-problem-btn.is-selected {
   border-color: var(--color-primary);
-  background: rgba(0, 140, 255, 0.15);
+  background: rgba(var(--color-primary-rgb), 0.15);
   color: var(--color-primary-dark);
   font-weight: 700;
   box-shadow: inset 0 0 0 1px var(--color-primary);
@@ -273,18 +273,18 @@
 
 /* ── Photo Upload Box ────────────────────────────────────────────────────── */
 .tl-photo-upload-area {
-  border: 2px dashed rgba(18, 48, 68, 0.6);
+  border: 2px dashed rgba(var(--color-border-rgb), 0.6);
   border-radius: 12px;
   padding: 32px 24px;
   text-align: center;
-  background: rgba(3, 7, 10, 0.3);
+  background: rgba(var(--color-bg-rgb), 0.3);
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .tl-photo-upload-area:hover {
   border-color: var(--color-primary);
-  background: rgba(0, 140, 255, 0.05);
+  background: rgba(var(--color-primary-rgb), 0.05);
 }
 
 .tl-photo-preview-grid {
@@ -300,7 +300,7 @@
   height: 80px;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(18, 48, 68, 0.6);
+  border: 1px solid rgba(var(--color-border-rgb), 0.6);
 }
 
 .tl-photo-thumb img {
@@ -313,7 +313,7 @@
   position: absolute;
   top: 4px;
   right: 4px;
-  background: rgba(3, 7, 10, 0.8);
+  background: rgba(var(--color-bg-rgb), 0.8);
   color: #ff4d4d;
   border: 1px solid rgba(255, 77, 77, 0.3);
   border-radius: 50%;
@@ -338,9 +338,9 @@
   align-items: center;
   gap: 10px;
   padding: 12px 20px;
-  background: rgba(0, 140, 255, 0.1);
+  background: rgba(var(--color-primary-rgb), 0.1);
   color: var(--color-primary-dark);
-  border: 1px solid rgba(0, 140, 255, 0.3);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.3);
   border-radius: 10px;
   font-weight: 700;
   font-size: 14px;
@@ -350,9 +350,9 @@
 }
 
 .tl-gps-btn:hover {
-  background: rgba(0, 140, 255, 0.2);
+  background: rgba(var(--color-primary-rgb), 0.2);
   border-color: var(--color-primary);
-  box-shadow: 0 4px 12px rgba(0, 140, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.15);
 }
 
 .tl-gps-btn:disabled {
@@ -362,8 +362,8 @@
 
 /* ── Summary Box ─────────────────────────────────────────────────────────── */
 .tl-summary-card {
-  background: rgba(3, 7, 10, 0.5);
-  border: 1px solid rgba(18, 48, 68, 0.5);
+  background: rgba(var(--color-bg-rgb), 0.5);
+  border: 1px solid rgba(var(--color-border-rgb), 0.5);
   border-radius: 16px;
   padding: 24px;
   margin-bottom: 32px;
@@ -377,7 +377,7 @@
   justify-content: space-between;
   align-items: flex-start;
   padding-bottom: 16px;
-  border-bottom: 1px dashed rgba(18, 48, 68, 0.4);
+  border-bottom: 1px dashed rgba(var(--color-border-rgb), 0.4);
   font-size: 14px;
 }
 
@@ -422,7 +422,7 @@
   align-items: center;
   margin-top: 40px;
   padding-top: 24px;
-  border-top: 1px solid rgba(18, 48, 68, 0.4);
+  border-top: 1px solid rgba(var(--color-border-rgb), 0.4);
 }
 
 /* ── Success Screen ──────────────────────────────────────────────────────── */
@@ -450,23 +450,23 @@
   display: inline-flex;
   align-items: center;
   gap: 16px;
-  background: rgba(3, 7, 10, 0.8);
+  background: rgba(var(--color-bg-rgb), 0.8);
   color: var(--color-primary-dark);
   padding: 16px 24px;
-  border: 1px solid rgba(18, 48, 68, 0.6);
+  border: 1px solid rgba(var(--color-border-rgb), 0.6);
   border-radius: 12px;
   font-family: monospace;
   font-size: 24px;
   font-weight: 800;
   letter-spacing: 2px;
   margin: 32px 0;
-  box-shadow: 0 12px 32px rgba(0, 140, 255, 0.1);
+  box-shadow: 0 12px 32px rgba(var(--color-primary-rgb), 0.1);
 }
 
 .tl-tracking-copy-btn {
-  background: rgba(0, 140, 255, 0.15);
+  background: rgba(var(--color-primary-rgb), 0.15);
   color: var(--color-primary-dark);
-  border: 1px solid rgba(0, 140, 255, 0.3);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.3);
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 13px;
@@ -477,7 +477,7 @@
 }
 
 .tl-tracking-copy-btn:hover {
-  background: rgba(0, 140, 255, 0.25);
+  background: rgba(var(--color-primary-rgb), 0.25);
 }
 
 .tl-success-actions {

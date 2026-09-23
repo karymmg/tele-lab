@@ -10,8 +10,8 @@ export interface ShopCategory {
 export interface ShopProduct {
   id: string;
   categoryId: string;
-  brandId?: string;
-  modelId?: string;
+  brandId?: string | null;
+  modelId?: string | null;
   sku?: string;
   name: string;
   slug?: string;

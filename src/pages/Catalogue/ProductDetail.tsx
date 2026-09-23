@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/services/supabase/client";
@@ -22,9 +22,12 @@ import {
   Plus,
 } from "lucide-react";
 import "./ProductDetail.css";
+import { getProductPath, toUrlSlug } from "@/utils/productUrl";
 
 export function ProductDetail() {
-  const { categorySlug, productSlug } = useParams();
+  const { productSlug } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [qty, setQty] = useState(1);
@@ -32,46 +35,44 @@ export function ProductDetail() {
   const { addItem, toggleCart } = useCartStore();
 
   useEffect(() => {
+    let cancelled = false;
     async function fetchProduct() {
       setLoading(true);
-      const isUuid =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          productSlug || ""
-        );
+      setProduct(null);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(productSlug || "");
       const query = supabase
         .from("shop_products")
-        .select(
-          `
-          *,
-          category:shop_categories(name, slug),
-          brand:brands(name, slug),
-          model:models(name, slug)
-        `
-        )
+        .select("*, category:shop_categories(name, slug), brand:brands(name, slug), model:models(name, slug, brand_id)")
         .eq("active", true);
-
-      if (isUuid) {
-        query.eq("id", productSlug);
-      } else {
-        query.eq("slug", productSlug);
-      }
-
+      if (isUuid) query.eq("id", productSlug);
+      else query.eq("slug", productSlug);
       const { data, error } = await query.maybeSingle();
-
-      if (error) {
-        console.error("Supabase Error fetching product:", error);
+      if (error) console.error("Supabase Error fetching product:", error);
+      let result: any = data;
+      if (result?.model?.brand_id && !result.brand) {
+        const { data: modelBrand } = await supabase.from("brands").select("name, slug").eq("id", result.model.brand_id).maybeSingle();
+        if (modelBrand) result = { ...result, brand: modelBrand };
       }
-
-      if (data) {
-        setProduct(data);
+      if (!cancelled) {
+        setProduct(result || null);
+        setLoading(false);
       }
-      setLoading(false);
     }
-
-    if (productSlug) {
-      fetchProduct();
-    }
+    if (productSlug) fetchProduct();
+    return () => { cancelled = true; };
   }, [productSlug]);
+
+  useEffect(() => {
+    if (!product) return;
+    const canonicalPath = getProductPath({
+      id: product.id,
+      slug: product.slug,
+      categorySlug: product.category?.slug || product.category?.name,
+      brandSlug: product.brand?.slug || product.brand?.name,
+      modelSlug: product.model?.slug || product.model?.name,
+    });
+    if (location.pathname !== canonicalPath) navigate(canonicalPath, { replace: true });
+  }, [product, location.pathname, navigate]);
 
   /* ── Loading ── */
   if (loading) {
@@ -112,9 +113,13 @@ export function ProductDetail() {
     product.short_description ||
     product.description ||
     `Achetez ${product.name} en Tunisie chez Telephonic Pro.`;
-  const canonicalUrl = `https://telephonic-pro.tn/shop/category/${
-    product.category?.slug || "category"
-  }/${product.slug}`;
+  const canonicalUrl = "https://telephonic-pro.tn" + getProductPath({
+    id: product.id,
+    slug: product.slug,
+    categorySlug: product.category?.slug || product.category?.name,
+    brandSlug: product.brand?.slug || product.brand?.name,
+    modelSlug: product.model?.slug || product.model?.name,
+  });
 
   const productSchema = {
     "@context": "https://schema.org",
@@ -123,6 +128,7 @@ export function ProductDetail() {
     image: product.image_url ? [product.image_url] : [],
     description: pageDescription,
     sku: product.sku || product.slug,
+    ...(product.model && { "additionalProperty": [{ "@type": "PropertyValue", name: "Modèle", value: product.model.name }] }),
     ...(product.brand && {
       brand: { "@type": "Brand", name: product.brand.name },
     }),
@@ -142,39 +148,23 @@ export function ProductDetail() {
       : {}),
   };
 
+  const breadcrumbItems = [
+    { name: "Accueil", item: "https://telephonic-pro.tn/" },
+    { name: "Boutique", item: "https://telephonic-pro.tn/shop" },
+    ...(product.category ? [{ name: product.category.name, item: "https://telephonic-pro.tn/category/" + (product.category.slug || toUrlSlug(product.category.name)) }] : []),
+    ...(product.brand ? [{ name: product.brand.name, item: "https://telephonic-pro.tn/brand/" + (product.brand.slug || toUrlSlug(product.brand.name)) }] : []),
+    ...(product.model ? [{ name: product.model.name, item: "https://telephonic-pro.tn/model/" + (product.model.slug || toUrlSlug(product.model.name)) }] : []),
+    { name: product.name, item: canonicalUrl },
+  ];
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Accueil",
-        item: "https://telephonic-pro.tn/",
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Boutique",
-        item: "https://telephonic-pro.tn/shop",
-      },
-      ...(product.category
-        ? [
-            {
-              "@type": "ListItem",
-              position: 3,
-              name: product.category.name,
-              item: `https://telephonic-pro.tn/category/${product.category.slug}`,
-            },
-          ]
-        : []),
-      {
-        "@type": "ListItem",
-        position: product.category ? 4 : 3,
-        name: product.name,
-        item: canonicalUrl,
-      },
-    ],
+    itemListElement: breadcrumbItems.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      item: item.item,
+    })),
   };
 
   const handleAddToCart = () => {
@@ -226,7 +216,19 @@ export function ProductDetail() {
           {product.category && (
             <>
               <ChevronRight size={14} className="pd-breadcrumb-sep" />
-              <Link to={`/shop`}>{product.category.name}</Link>
+              <Link to={"/category/" + (product.category.slug || toUrlSlug(product.category.name))}>{product.category.name}</Link>
+            </>
+          )}
+          {product.brand && (
+            <>
+              <ChevronRight size={14} className="pd-breadcrumb-sep" />
+              <Link to={"/brand/" + (product.brand.slug || toUrlSlug(product.brand.name))}>{product.brand.name}</Link>
+            </>
+          )}
+          {product.model && (
+            <>
+              <ChevronRight size={14} className="pd-breadcrumb-sep" />
+              <Link to={"/model/" + (product.model.slug || toUrlSlug(product.model.name))}>{product.model.name}</Link>
             </>
           )}
           <ChevronRight size={14} className="pd-breadcrumb-sep" />

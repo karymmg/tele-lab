@@ -1,30 +1,23 @@
 import { useEffect } from "react";
 
-/**
- * Attaches an IntersectionObserver to all elements matching the selector
- * and toggles `is-visible` when they enter/leave the viewport.
- */
+/** Replay reveal motion whenever an item enters the viewport in either direction. */
 export function useScrollReveal(
   selector = ".reveal, .reveal-left, .reveal-right, .reveal-scale"
 ) {
   useEffect(() => {
     const elements = document.querySelectorAll<HTMLElement>(selector);
+    if (!elements.length) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-visible");
-          } else {
-            entry.target.classList.remove("is-visible");
-          }
+          entry.target.classList.toggle("is-visible", entry.isIntersecting);
         });
       },
-      { threshold: 0.1, rootMargin: "-20px 0px" } // Adjust as needed
+      { threshold: 0.08, rootMargin: "48px 0px 48px 0px" }
     );
 
-    elements.forEach((el) => observer.observe(el));
-
+    elements.forEach((element) => observer.observe(element));
     return () => observer.disconnect();
   }, [selector]);
 }
