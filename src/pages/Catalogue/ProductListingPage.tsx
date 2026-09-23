@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Package, Search } from "lucide-react";
 import { useShopBrands, useShopCategories, useShopModels, useShopProducts } from "@/services/shopStore";
 import { getProductPath, toUrlSlug } from "@/utils/productUrl";
+import { ProductImage } from "@/components/ui/ProductImage";
 import "@/pages/Shop/Shop.css";
 
 type ListingKind = "all" | "category" | "brand" | "model" | "search";
@@ -78,7 +79,7 @@ export function ProductListingPage({ kind, slug }: Props) {
             return (
               <article className="tl-product-card" key={product.id}>
                 <Link to={href} className="tl-product-img-wrapper" aria-label={`Voir ${product.name}`}>
-                  {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="tl-product-img" loading="lazy" /> : <div className="tl-product-placeholder"><Package size={48} /></div>}
+                  <ProductImage src={product.imageUrl} alt={product.name} className="tl-product-img" fallback={<div className="tl-product-placeholder"><Package size={48} /><span>Photo indisponible</span></div>} />
                   {product.stock === 0 && <span className="tl-product-badge out-of-stock">Rupture</span>}
                 </Link>
                 <div className="tl-product-info">

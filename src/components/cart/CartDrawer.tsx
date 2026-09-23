@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { X, Trash2, Plus, Minus, ShoppingBag } from "lucide-react";
 import { useCartStore } from "@/services/cartStore";
 import { CheckoutModal } from "./CheckoutModal";
+import { ProductImage } from "@/components/ui/ProductImage";
 import "./CartDrawer.css";
 
 export function CartDrawer() {
@@ -44,11 +45,7 @@ export function CartDrawer() {
                   {items.map((item) => (
                     <div key={item.id} className="tl-cart-item">
                       <div className="tl-cart-item-img">
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.name} />
-                        ) : (
-                          <ShoppingBag size={24} color="var(--color-border)" />
-                        )}
+                        <ProductImage src={item.imageUrl} alt={item.name} fallback={<ShoppingBag size={24} color="var(--color-border)" />} />
                       </div>
                       <div className="tl-cart-item-details">
                         <h4>{item.name}</h4>

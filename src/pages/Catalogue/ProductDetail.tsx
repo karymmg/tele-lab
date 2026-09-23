@@ -2,6 +2,8 @@ import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/services/supabase/client";
+import { ProductImage } from "@/components/ui/ProductImage";
+import { normalizeProductImageUrl } from "@/utils/productImage";
 import { useAuth } from "@/services/auth";
 import { useCartStore } from "@/services/cartStore";
 import {
@@ -54,7 +56,7 @@ export function ProductDetail() {
         if (modelBrand) result = { ...result, brand: modelBrand };
       }
       if (!cancelled) {
-        setProduct(result || null);
+        setProduct(result ? { ...result, image_url: normalizeProductImageUrl(result.image_url) } : null);
         setLoading(false);
       }
     }
@@ -247,18 +249,11 @@ export function ProductDetail() {
               >
                 {product.stock > 0 ? "En Stock" : "Rupture"}
               </div>
-              {product.image_url ? (
-                <img
-                  src={product.image_url}
-                  alt={product.name}
-                  loading="lazy"
-                />
-              ) : (
-                <div className="pd-img-placeholder">
-                  <Package size={64} />
-                  <span>Aucune image</span>
-                </div>
-              )}
+              <ProductImage
+                src={product.image_url}
+                alt={product.name}
+                fallback={<div className="pd-img-placeholder"><Package size={64} /><span>Image indisponible — vérifiez le partage du lien Google Drive</span></div>}
+              />
             </div>
           </div>
 

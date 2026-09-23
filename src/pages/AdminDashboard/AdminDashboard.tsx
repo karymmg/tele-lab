@@ -6,11 +6,13 @@ import { RepairRequest } from "@/types/telelab";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { RepairStatusKey, REPAIR_STATUSES } from "@/utils/status";
 import { useAuth } from "@/services/auth";
-import { Settings, Search, X, Clock, User, Phone, DollarSign, Truck, FileText, Users, Wrench, MessageCircle, Plus, Trash2, Printer, Store, Package, ShoppingBag, BarChart3, Shield, Eye, Pencil, Save } from "lucide-react";
+import { Settings, Search, X, Clock, User, Phone, DollarSign, Truck, FileText, Users, Wrench, MessageCircle, Plus, Trash2, Printer, Store, Package, ShoppingBag, BarChart3, Shield, Eye, Pencil, Save, Image, Upload, Copy, Check } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { RepairRequestForm } from "@/components/forms/RepairRequestForm";
 import { useShopCategories, useShopProducts, useShopBrands, useShopModels, shopStore } from "@/services/shopStore";
-import { ShopProduct } from "@/types/shop";
+import type { ShopMediaAsset } from "@/services/shopStore";
+import type { ShopProduct } from "@/types/shop";
+import { ProductImage } from "@/components/ui/ProductImage";
 import { useOccasions, useSiteVisits, occasionStore } from "@/services/occasionStore";
 import { useShopOrders, orderStore } from "@/services/orderStore";
 import { supabase } from "@/services/supabase/client";
@@ -93,7 +95,7 @@ function normalizeCsvHeader(value: string): string {
 }
 
 function normalizeCsvValue(value: string): string {
-  return normalizeCsvHeader(value).replace(/[^a-z0-9]/g, "");
+  return value.normalize("NFD").replace(/[\u0300-\u036f\u064b-\u065f\u0670]/g, "").toLocaleLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 }
 
 function isAdminTab(value: string | null): value is TabType {
@@ -131,6 +133,7 @@ export function AdminDashboard() {
   const [csvImportStatus, setCsvImportStatus] = useState<CsvImportStatus>({ phase: "idle", total: 0, processed: 0, added: 0, errors: [] });
   const [editingProduct, setEditingProduct] = useState<ShopProduct | null>(null);
   const [productEditForm, setProductEditForm] = useState({ name: "", sku: "", categoryId: "", brandId: "", modelId: "", price: "", costPrice: "", stock: "", description: "", imageUrl: "", active: true });
+  const [productEditImageFile, setProductEditImageFile] = useState<File | null>(null);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [selectedReq, setSelectedReq] = useState<RepairRequest | null>(null);
@@ -156,7 +159,29 @@ export function AdminDashboard() {
   const occasions = useOccasions();
   const siteVisits = useSiteVisits();
   const shopOrders = useShopOrders();
-  const [shopView, setShopView] = useState<"products" | "categories" | "stock">("products");
+  const [shopView, setShopView] = useState<"products" | "categories" | "stock" | "media">("products");
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [mediaAssets, setMediaAssets] = useState<ShopMediaAsset[]>([]);
+  const [isLoadingMedia, setIsLoadingMedia] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [mediaStatus, setMediaStatus] = useState("");
+  const [copiedMediaPath, setCopiedMediaPath] = useState<string | null>(null);
+  useEffect(() => {
+    if (activeTab !== "shop" || shopView !== "media") return;
+    let cancelled = false;
+    setIsLoadingMedia(true);
+    setMediaStatus("");
+    shopStore.listProductMedia()
+      .then(items => { if (!cancelled) setMediaAssets(items); })
+      .catch(error => {
+        if (!cancelled) setMediaStatus((isArabic ? "تعذّر تحميل الصور: " : "Impossible de charger les images : ") + (error instanceof Error ? error.message : ""));
+      })
+      .finally(() => { if (!cancelled) setIsLoadingMedia(false); });
+    return () => { cancelled = true; };
+  }, [activeTab, shopView, isArabic]);
+  useEffect(() => {
+    setSelectedProductIds(current => current.filter(id => products.some(product => product.id === id)));
+  }, [products]);
   useEffect(() => {
     setSearch(urlQuery);
     setAdminSearch(urlQuery);
@@ -524,6 +549,18 @@ export function AdminDashboard() {
       const rows = parseCsv(await file.text());
       if (rows.length < 2) throw new Error(isArabic ? "الملف فارغ أو ناقص." : "Le fichier CSV est vide ou incomplet.");
 
+      let mediaImages: ShopMediaAsset[] = [];
+      let mediaLibraryUnavailable = false;
+      try {
+        mediaImages = await shopStore.listProductMedia();
+      } catch {
+        // CSV import stays usable when Storage listing is unavailable; explicit URLs still work.
+        mediaLibraryUnavailable = true;
+      }
+      const mediaByProductName = new Map<string, string>(
+        mediaImages.map(asset => [normalizeCsvValue(asset.name.replace(/\.[^.]+$/, "")), asset.publicUrl] as [string, string])
+      );
+
       const headers = rows[0].map(normalizeCsvHeader);
       const findColumn = (...aliases: string[]) => headers.findIndex(header => aliases.includes(header));
       const columns = {
@@ -550,6 +587,7 @@ export function AdminDashboard() {
       const dataRows = rows.slice(1);
       const errors: string[] = [];
       let added = 0;
+      let autoLinkedImages = 0;
       setCsvImportStatus({ phase: "importing", total: dataRows.length, processed: 0, added: 0, errors: [] });
       const readValue = (row: string[], index: number) => index >= 0 ? (row[index] || "").trim() : "";
       const parseAmount = (value: string) => Number(value.replace(/\s/g, "").replace(",", "."));
@@ -572,14 +610,15 @@ export function AdminDashboard() {
         const brandId = readValue(row, columns.brandId);
         const modelId = readValue(row, columns.modelId);
         const description = readValue(row, columns.description);
-        const imageUrl = readValue(row, columns.imageUrl);
+        const csvImageUrl = readValue(row, columns.imageUrl);
+        const matchedImageUrl = !csvImageUrl ? mediaByProductName.get(normalizeCsvValue(productName)) : undefined;
+        const imageUrl = csvImageUrl || matchedImageUrl || "";
         const price = parseAmount(priceText);
         const costPrice = costText ? parseAmount(costText) : 0;
         const stock = stockText ? Number(stockText.replace(",", ".")) : 0;
         let rowError = "";
 
-        if (row.length < 9) rowError = "colonnes manquantes";
-        else if (!productName || !categoryValue || !priceText) rowError = "nom, prix ou catégorie manquant";
+        if (!productName || !categoryValue || !priceText) rowError = "nom, prix ou catégorie manquant";
         else if (!categoryMatch && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryValue)) rowError = "catégorie introuvable : " + categoryValue;
         else if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)) rowError = "ID_Categorie invalide";
         else if (!Number.isFinite(price) || price <= 0) rowError = "prix de vente invalide";
@@ -604,6 +643,7 @@ export function AdminDashboard() {
               active: true
             }, { deferRefresh: true });
             added += 1;
+            if (matchedImageUrl) autoLinkedImages += 1;
           } catch (error) {
             const message = error instanceof Error ? error.message : "Erreur d'import";
             errors.push("Ligne " + (rowIndex + 2) + " : " + message);
@@ -620,7 +660,7 @@ export function AdminDashboard() {
         processed: dataRows.length,
         added,
         errors: errors.slice(0, 5),
-        message: (isArabic ? "تم استيراد " : "Import terminé : ") + added + (isArabic ? " منتج." : " produit(s) ajouté(s).") + (errors.length ? " " + errors.length + (isArabic ? " أسطر فيها أخطاء." : " ligne(s) à corriger.") : ""),
+        message: (isArabic ? "تم استيراد " : "Import terminé : ") + added + (isArabic ? " منتج." : " produit(s) ajouté(s).") + (autoLinkedImages ? (isArabic ? ` صور مربوطة آلياً: ${autoLinkedImages}.` : ` Images liées automatiquement : ${autoLinkedImages}.`) : "") + (mediaLibraryUnavailable ? (isArabic ? " تعذّر قراءة مكتبة الصور." : " Bibliothèque média indisponible : les noms n'ont pas pu être associés.") : "") + (errors.length ? " " + errors.length + (isArabic ? " أسطر فيها أخطاء." : " ligne(s) à corriger.") : ""),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erreur pendant la lecture du CSV";
@@ -651,6 +691,7 @@ export function AdminDashboard() {
 
   function handleOpenProductEditor(product: ShopProduct) {
     setEditingProduct(product);
+    setProductEditImageFile(null);
     setProductEditForm({
       name: product.name,
       sku: product.sku || "",
@@ -679,6 +720,10 @@ export function AdminDashboard() {
 
     setIsSavingProduct(true);
     try {
+      const imageUrl = productEditImageFile
+        ? await shopStore.uploadProductImage(productEditImageFile)
+        : productEditForm.imageUrl.trim();
+
       await shopStore.updateProduct(editingProduct.id, {
         name: productEditForm.name.trim(),
         sku: productEditForm.sku.trim(),
@@ -689,10 +734,11 @@ export function AdminDashboard() {
         costPrice,
         stock,
         description: productEditForm.description.trim(),
-        imageUrl: productEditForm.imageUrl.trim(),
+        imageUrl,
         active: productEditForm.active,
       });
       setEditingProduct(null);
+      setProductEditImageFile(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erreur de mise à jour du produit";
       alert((isArabic ? "تعذر حفظ المنتج: " : "Impossible d'enregistrer le produit : ") + message);
@@ -705,11 +751,105 @@ export function AdminDashboard() {
     if(confirm("Supprimer ce produit ?")) {
       try {
         await shopStore.deleteProduct(id);
+        setSelectedProductIds(current => current.filter(productId => productId !== id));
       } catch (err) {
         alert("Erreur lors de la suppression");
       }
     }
   }
+
+  function toggleProductSelection(productId: string, selected: boolean) {
+    setSelectedProductIds(current => selected
+      ? current.includes(productId) ? current : [...current, productId]
+      : current.filter(id => id !== productId));
+  }
+
+  function toggleVisibleProductSelection(selected: boolean) {
+    const visibleIds = filteredProducts.map(product => product.id);
+    setSelectedProductIds(current => selected
+      ? [...new Set([...current, ...visibleIds])]
+      : current.filter(id => !visibleIds.includes(id)));
+  }
+
+  async function handleDeleteSelectedProducts() {
+    if (!selectedProductIds.length) return;
+    if (!window.confirm(isArabic
+      ? `حذف ${selectedProductIds.length} منتج محدد نهائياً؟`
+      : `Supprimer définitivement les ${selectedProductIds.length} produit(s) sélectionné(s) ?`)) return;
+    try {
+      await shopStore.deleteProducts(selectedProductIds);
+      setSelectedProductIds([]);
+    } catch (error) {
+      alert((isArabic ? "تعذّر حذف المنتجات: " : "Impossible de supprimer les produits : ") + (error instanceof Error ? error.message : ""));
+    }
+  }
+
+  async function handleDeleteAllProducts() {
+    if (!products.length) return;
+    if (!window.confirm(isArabic
+      ? `حذف جميع المنتجات (${products.length}) نهائياً؟ هذا لا يمكن التراجع عنه.`
+      : `Supprimer définitivement les ${products.length} produits de toute la boutique ? Cette action est irréversible.`)) return;
+    try {
+      await shopStore.deleteAllProducts();
+      setSelectedProductIds([]);
+    } catch (error) {
+      alert((isArabic ? "تعذّر حذف المنتجات: " : "Impossible de supprimer les produits : ") + (error instanceof Error ? error.message : ""));
+    }
+  }
+
+  async function handleUploadMedia(event: React.ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const files = Array.from(input.files || []);
+    input.value = "";
+    if (!files.length) return;
+
+    setIsUploadingMedia(true);
+    setMediaStatus("");
+    let uploaded = 0;
+    let linked = 0;
+    const errors: string[] = [];
+    for (const file of files) {
+      try {
+        const asset = await shopStore.uploadProductMedia(file);
+        uploaded += 1;
+        const mediaKey = normalizeCsvValue(asset.name.replace(/\.[^.]+$/, ""));
+        const matchingProducts = products.filter(product => normalizeCsvValue(product.name) === mediaKey);
+        for (const product of matchingProducts) {
+          try {
+            await shopStore.updateProduct(product.id, { imageUrl: asset.publicUrl });
+            linked += 1;
+          } catch (error) {
+            errors.push(`${product.name}: ${error instanceof Error ? error.message : "Association impossible"}`);
+          }
+        }
+      } catch (error) {
+        errors.push(`${file.name}: ${error instanceof Error ? error.message : "Erreur d'upload"}`);
+      }
+    }
+    try {
+      setMediaAssets(await shopStore.listProductMedia());
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : "Impossible de recharger la bibliothèque.");
+    }
+    setMediaStatus(
+      (uploaded ? (isArabic ? `تم رفع ${uploaded} صورة.` : `${uploaded} image(s) ajoutée(s).`) : "") +
+      (linked ? (isArabic ? ` وربط ${linked} منتج آلياً.` : ` ${linked} produit(s) lié(s) automatiquement.`) : "") +
+      (uploaded && !linked ? (isArabic ? " الصور تبقى في المكتبة للاستعمال عند استيراد CSV." : " Les photos restent disponibles pour le prochain import CSV.") : "") +
+      (errors.length ? ` ${errors.slice(0, 3).join(" · ")}` : "")
+    );
+    setIsUploadingMedia(false);
+  }
+
+  async function handleCopyMediaUrl(asset: ShopMediaAsset) {
+    try {
+      await navigator.clipboard.writeText(asset.publicUrl);
+      setCopiedMediaPath(asset.path);
+      setTimeout(() => setCopiedMediaPath(current => current === asset.path ? null : current), 1800);
+    } catch {
+      setMediaStatus(isArabic ? "ما نجّمش ننسخ الرابط؛ اضغط على خانة الرابط وانسخو." : "Copie impossible : cliquez dans le champ URL pour le sélectionner et le copier.");
+    }
+  }
+
   async function handleProductReferenceChange(productId: string, updates: { brandId?: string | null; modelId?: string | null }) {
     try {
       await shopStore.updateProduct(productId, updates);
@@ -1578,7 +1718,52 @@ export function AdminDashboard() {
               >
                 <Package size={16} /> 📦 Stocks
               </button>
+              <button
+                className={`tl-tab-btn ${shopView === "media" ? "is-active" : ""}`}
+                onClick={() => setShopView("media")}
+                style={{ padding: "8px 16px", borderRadius: 8 }}
+              >
+                <Image size={16} /> {isArabic ? "الصور" : "Médias"}
+              </button>
             </div>
+
+            {shopView === "media" && (
+              <section className="tl-media-library">
+                <div className="tl-media-library__header">
+                  <div>
+                    <span className="tl-admin-section-kicker">{isArabic ? "مكتبة صور المنتجات" : "BIBLIOTHÈQUE PRODUITS"}</span>
+                    <h3>{isArabic ? "الصور والروابط" : "Images et liens"}</h3>
+                    <p>{isArabic ? "سمّي الصورة بنفس اسم المنتج. المنتجات الموجودة تتحدّث صورتها آلياً، والصور الأخرى ترتبط وقت استيراد CSV إذا كان URL_Image فارغاً. إعادة رفع نفس الاسم تعوّض الصورة القديمة." : "Le nom du fichier doit correspondre au nom du produit. Une photo liée aux produits existants sera mise à jour automatiquement ; sinon elle sera associée à l'import CSV si URL_Image est vide. Réimporter le même nom remplace la photo précédente."}</p>
+                  </div>
+                  <label className="tl-btn-primary tl-media-upload-button">
+                    <Upload size={16} /> {isUploadingMedia ? (isArabic ? "جاري الرفع…" : "Envoi en cours…") : (isArabic ? "إضافة صور" : "Ajouter des photos")}
+                    <input type="file" accept="image/*" multiple disabled={isUploadingMedia} onChange={handleUploadMedia} />
+                  </label>
+                </div>
+                {mediaStatus && <div className="tl-media-status" role="status" aria-live="polite">{mediaStatus}</div>}
+                {isLoadingMedia ? (
+                  <div className="tl-media-empty">{isArabic ? "جاري تحميل الصور…" : "Chargement des images…"}</div>
+                ) : mediaAssets.length ? (
+                  <div className="tl-media-grid">
+                    {mediaAssets.map(asset => (
+                      <article className="tl-media-card" key={asset.path}>
+                        <img src={asset.publicUrl} alt={asset.name} loading="lazy" />
+                        <div className="tl-media-card__body">
+                          <strong title={asset.name}>{asset.name}</strong>
+                          <input type="text" className="tl-media-url" aria-label={`URL de ${asset.name}`} readOnly value={asset.publicUrl} onFocus={event => event.currentTarget.select()} />
+                          <button type="button" className="tl-btn-manage" onClick={() => handleCopyMediaUrl(asset)}>
+                            {copiedMediaPath === asset.path ? <Check size={14} /> : <Copy size={14} />}
+                            {copiedMediaPath === asset.path ? (isArabic ? "تم النسخ" : "Copié") : (isArabic ? "نسخ الرابط" : "Copier l'URL")}
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="tl-media-empty">{isArabic ? "ما فما حتى صورة. أضف صوراً بأسماء المنتجات نفسها." : "Aucune image pour l'instant. Ajoutez des photos avec le nom exact des produits."}</div>
+                )}
+              </section>
+            )}
 
             {shopView === "categories" && (
               <>
@@ -1678,6 +1863,20 @@ export function AdminDashboard() {
                     </div>
                   </div>
                 </div>
+
+                <div className="tl-product-bulk-actions">
+                  <label className="tl-product-select-visible"><input type="checkbox" disabled={!filteredProducts.length} checked={filteredProducts.length > 0 && filteredProducts.every(product => selectedProductIds.includes(product.id))} onChange={event => toggleVisibleProductSelection(event.target.checked)} /> {isArabic ? `اختيار ${filteredProducts.length} منتج ظاهر` : `Sélectionner les ${filteredProducts.length} produits affichés`}</label>
+                  <span>{isArabic ? `${selectedProductIds.length} محدد · ${products.length} منتج بالمجموع` : `${selectedProductIds.length} sélectionné(s) · ${products.length} produit(s) au total`}</span>
+                  <div>
+                    <button type="button" className="tl-btn-manage tl-danger-action" disabled={!selectedProductIds.length} onClick={handleDeleteSelectedProducts}>
+                      <Trash2 size={14} /> {isArabic ? "حذف المحدد" : "Supprimer la sélection"}
+                    </button>
+                    <button type="button" className="tl-btn-manage tl-danger-action" disabled={!products.length} onClick={handleDeleteAllProducts}>
+                      <Trash2 size={14} /> {isArabic ? `حذف الكل (${products.length})` : `Tout supprimer (${products.length})`}
+                    </button>
+                  </div>
+                </div>
+                <p className="tl-csv-image-help">{isArabic ? "URL_Image اختياري: إذا كان فارغاً، يتربط تلقائياً بصورة اسمها نفس اسم المنتج." : "URL_Image est facultative : si elle est vide, le CSV associe automatiquement la photo dont le nom correspond au produit."}</p>
 
                 {csvImportStatus.phase !== "idle" && (
                   <div className={"tl-csv-import-status is-" + csvImportStatus.phase} role="status" aria-live="polite">
@@ -1825,6 +2024,7 @@ export function AdminDashboard() {
                     <table className="tl-admin-table">
                       <thead>
                         <tr>
+                          <th>Sél.</th>
                           <th>Image</th>
                           <th>Produit</th>
                           <th>SKU</th>
@@ -1842,12 +2042,14 @@ export function AdminDashboard() {
                           const cat = categories.find(c => c.id === prod.categoryId);
                           return (
                             <tr key={prod.id} style={{ background: prod.stock > 0 && prod.stock <= 5 ? "rgba(245, 158, 11, 0.05)" : undefined }}>
+                              <td data-label="Sélection"><input type="checkbox" aria-label={`Sélectionner ${prod.name}`} checked={selectedProductIds.includes(prod.id)} onChange={event => toggleProductSelection(prod.id, event.target.checked)} /></td>
                               <td>
-                                {prod.imageUrl ? (
-                                  <img src={prod.imageUrl} alt={prod.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6 }} />
-                                ) : (
-                                  <div style={{ width: 40, height: 40, background: "var(--color-border)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={16} color="var(--color-text-secondary)" /></div>
-                                )}
+                                <ProductImage
+                                  src={prod.imageUrl}
+                                  alt={prod.name}
+                                  style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6 }}
+                                  fallback={<div style={{ width: 40, height: 40, background: "var(--color-border)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={16} color="var(--color-text-secondary)" /></div>}
+                                />
                               </td>
                               <td data-label="Produit">
                                 <div style={{ fontWeight: 600 }}>{prod.name}</div>
@@ -1902,7 +2104,7 @@ export function AdminDashboard() {
                           );
                         })}
                         {filteredProducts.length === 0 && (
-                          <tr><td colSpan={10} style={{ textAlign: "center", padding: 32, color: "var(--color-text-secondary)" }}>{search ? (isArabic ? "ما لقيناش منتجات مطابقة." : "Aucun produit ne correspond à cette recherche.") : (isArabic ? "ما فما حتى منتج." : "Aucun produit pour le moment.")}</td></tr>
+                          <tr><td colSpan={11} style={{ textAlign: "center", padding: 32, color: "var(--color-text-secondary)" }}>{search ? (isArabic ? "ما لقيناش منتجات مطابقة." : "Aucun produit ne correspond à cette recherche.") : (isArabic ? "ما فما حتى منتج." : "Aucun produit pour le moment.")}</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -2071,6 +2273,11 @@ export function AdminDashboard() {
                   <label>{isArabic ? "الماركة" : "Marque"}<select value={productEditForm.brandId} onChange={event => setProductEditForm(form => ({ ...form, brandId: event.target.value }))}><option value="">{isArabic ? "بدون ماركة" : "Sans marque"}</option>{brands.map(brand => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select></label>
                   <label>{isArabic ? "الموديل" : "Modèle"}<select value={productEditForm.modelId} onChange={event => setProductEditForm(form => ({ ...form, modelId: event.target.value }))}><option value="">{isArabic ? "بدون موديل" : "Sans modèle"}</option>{models.map(model => <option key={model.id} value={model.id}>{model.name}</option>)}</select></label>
                   <label className="tl-product-editor-span">{isArabic ? "رابط الصورة" : "URL de l'image"}<input type="url" placeholder="https://…" value={productEditForm.imageUrl} onChange={event => setProductEditForm(form => ({ ...form, imageUrl: event.target.value }))} /></label>
+                  <label className="tl-product-editor-span">
+                    {isArabic ? "أو ارفع صورة من جهازك" : "Ou téléverser une image depuis votre appareil"}
+                    <input type="file" accept="image/*" onChange={event => setProductEditImageFile(event.target.files?.[0] ?? null)} />
+                    {productEditImageFile && <small>{isArabic ? "الصورة المختارة:" : "Image sélectionnée :"} {productEditImageFile.name}</small>}
+                  </label>
                   <label className="tl-product-editor-span">{isArabic ? "الوصف" : "Description"}<textarea rows={4} value={productEditForm.description} onChange={event => setProductEditForm(form => ({ ...form, description: event.target.value }))} /></label>
                   <label className="tl-product-editor-active"><input type="checkbox" checked={productEditForm.active} onChange={event => setProductEditForm(form => ({ ...form, active: event.target.checked }))} />{isArabic ? "ظاهر في المتجر" : "Visible dans la boutique"}</label>
                 </div>

@@ -8,6 +8,7 @@ import { Search, Store, ShoppingBag, Package, Plus, UserCheck, MessageCircle, Sh
 import { Link, useNavigate } from "react-router-dom";
 import "./Shop.css";
 import { getProductPath } from "@/utils/productUrl";
+import { ProductImage } from "@/components/ui/ProductImage";
 
 export function Shop() {
   const navigate = useNavigate();
@@ -173,13 +174,12 @@ export function Shop() {
               return (
                 <div key={prod.id} className="tl-product-card" onClick={() => handleProductClick(prod.id, false)}>
                   <div className="tl-product-img-wrapper">
-                    {prod.imageUrl ? (
-                      <img src={prod.imageUrl} alt={prod.name} className="tl-product-img" loading="lazy" />
-                    ) : (
-                      <div className="tl-product-placeholder">
-                        <Package size={48} color="var(--color-border)" />
-                      </div>
-                    )}
+                    <ProductImage
+                      src={prod.imageUrl}
+                      alt={prod.name}
+                      className="tl-product-img"
+                      fallback={<div className="tl-product-placeholder"><Package size={48} color="var(--color-border)" /><span>Photo indisponible</span></div>}
+                    />
                     {prod.stock === 0 && (
                       <div className="tl-product-badge out-of-stock">
                         {isArabic ? "نفذت الكمية" : "Rupture"}

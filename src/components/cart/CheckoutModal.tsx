@@ -4,6 +4,7 @@ import { X, ShoppingBag, CheckCircle, AlertCircle, Package, Lock } from "lucide-
 import { useAuth, registerUser } from "@/services/auth";
 import { orderStore, OrderItem } from "@/services/orderStore";
 import { CartItem } from "@/services/cartStore";
+import { ProductImage } from "@/components/ui/ProductImage";
 import "./CheckoutModal.css";
 
 interface CheckoutModalProps {
@@ -175,11 +176,7 @@ export function CheckoutModal({ items, totalPrice, onClose, onSuccess }: Checkou
             {items.map((item) => (
               <div key={item.id} className="tl-checkout-item">
                 <div className="tl-checkout-item-img">
-                  {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.name} />
-                  ) : (
-                    <Package size={18} color="var(--color-text-secondary)" />
-                  )}
+                  <ProductImage src={item.imageUrl} alt={item.name} fallback={<Package size={18} color="var(--color-text-secondary)" />} />
                 </div>
                 <div className="tl-checkout-item-details">
                   <div className="tl-checkout-item-name">{item.name}</div>

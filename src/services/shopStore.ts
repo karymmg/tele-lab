@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/services/supabase/client";
 import { ShopCategory, ShopProduct, ShopBrand, ShopModel } from "@/types/shop";
 import { toUrlSlug } from "@/utils/productUrl";
+import { normalizeProductImageUrl } from "@/utils/productImage";
 
 // Internal Caches
 let cachedCategories: ShopCategory[] = [];
@@ -11,6 +12,46 @@ let cachedModels: ShopModel[] = [];
 let brandsCacheLoaded = false;
 let modelsCacheLoaded = false;
 const SHOP_EVENT_NAME = "tele_lab_shop_update";
+
+export interface ShopMediaAsset {
+  name: string;
+  path: string;
+  publicUrl: string;
+  updatedAt: string | null;
+}
+
+function safeMediaBaseName(fileName: string): string {
+  const baseName = fileName.replace(/\.[^.]+$/, "");
+  return baseName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f\u064b-\u065f\u0670]/g, "")
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "") || `image-${Date.now()}`;
+}
+
+function compressImageToWebp(file: File, maxDimension: number, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Impossible de lire l'image."));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error("Le fichier sélectionné n'est pas une image lisible."));
+      image.onload = () => {
+        const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        const context = canvas.getContext("2d");
+        if (!context) return reject(new Error("Impossible de préparer l'image."));
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Erreur de compression d'image.")), "image/webp", quality);
+      };
+      image.src = String(reader.result || "");
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 function notifyShopUpdate() {
   window.dispatchEvent(new Event(SHOP_EVENT_NAME));
@@ -41,7 +82,7 @@ function mapProduct(dbProd: any): ShopProduct {
     price: dbProd.price,
     costPrice: dbProd.cost_price || 0,
     stock: dbProd.stock,
-    imageUrl: dbProd.image_url,
+    imageUrl: normalizeProductImageUrl(dbProd.image_url),
     active: dbProd.active,
     createdAt: dbProd.created_at,
   };
@@ -92,6 +133,14 @@ async function fetchModels() {
     modelsCacheLoaded = true;
     notifyShopUpdate();
   }
+}
+
+async function deleteShopProducts(ids: string[]) {
+  const uniqueIds = [...new Set(ids)].filter(Boolean);
+  if (!uniqueIds.length) return;
+  const { error } = await supabase.from("shop_products").delete().in("id", uniqueIds);
+  if (error) throw new Error(error.message);
+  await fetchProducts();
 }
 
 // Subscriptions
@@ -264,7 +313,7 @@ export const shopStore = {
       price: data.price,
       cost_price: data.costPrice || 0,
       stock: data.stock,
-      image_url: data.imageUrl,
+      image_url: normalizeProductImageUrl(data.imageUrl) ?? null,
       active: data.active,
     });
     if (error) throw new Error(error.message);
@@ -285,7 +334,7 @@ export const shopStore = {
     if (updates.price !== undefined) dbUpdates.price = updates.price;
     if (updates.costPrice !== undefined) dbUpdates.cost_price = updates.costPrice;
     if (updates.stock !== undefined) dbUpdates.stock = updates.stock;
-    if (updates.imageUrl !== undefined) dbUpdates.image_url = updates.imageUrl;
+    if (updates.imageUrl !== undefined) dbUpdates.image_url = normalizeProductImageUrl(updates.imageUrl) ?? null;
     if (updates.active !== undefined) dbUpdates.active = updates.active;
 
     const { error } = await supabase.from("shop_products").update(dbUpdates).eq("id", id);
@@ -296,67 +345,62 @@ export const shopStore = {
   },
 
   async deleteProduct(id: string) {
-    const { error } = await supabase.from("shop_products").delete().eq("id", id);
+    await deleteShopProducts([id]);
+  },
+
+  async deleteProducts(ids: string[]) {
+    await deleteShopProducts(ids);
+  },
+
+  async deleteAllProducts() {
+    await deleteShopProducts(cachedProducts.map(product => product.id));
+  },
+
+  async listProductMedia(): Promise<ShopMediaAsset[]> {
+    const { data, error } = await supabase.storage.from("shop-images").list("media", {
+      limit: 1000,
+      sortBy: { column: "name", order: "asc" },
+    });
     if (error) throw new Error(error.message);
-    await fetchProducts();
+    return (data || [])
+      .filter(file => Boolean(file.id) && file.name !== ".emptyFolderPlaceholder")
+      .map(file => {
+        const path = `media/${file.name}`;
+        const { data: publicData } = supabase.storage.from("shop-images").getPublicUrl(path);
+        const version = file.updated_at || file.id || "";
+        const publicUrl = version ? `${publicData.publicUrl}?v=${encodeURIComponent(version)}` : publicData.publicUrl;
+        return { name: file.name, path, publicUrl, updatedAt: file.updated_at || null };
+      });
+  },
+
+  async uploadProductMedia(file: File): Promise<ShopMediaAsset> {
+    if (!file.type.startsWith("image/")) throw new Error("Sélectionnez un fichier image.");
+    const baseName = safeMediaBaseName(file.name);
+    const path = `media/${baseName}.webp`;
+    const blob = await compressImageToWebp(file, 1600, 0.88);
+    const { error } = await supabase.storage.from("shop-images").upload(path, blob, {
+      contentType: "image/webp",
+      cacheControl: "3600",
+      upsert: true,
+    });
+    if (error) throw new Error(error.message);
+    const { data: publicData } = supabase.storage.from("shop-images").getPublicUrl(path);
+    const version = Date.now().toString();
+    return { name: `${baseName}.webp`, path, publicUrl: `${publicData.publicUrl}?v=${version}`, updatedAt: new Date(version).toISOString() };
   },
 
   // Image Upload Action
   async uploadProductImage(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const MAX_WIDTH = 800;
-          const MAX_HEIGHT = 800;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-          ctx?.drawImage(img, 0, 0, width, height);
-
-          canvas.toBlob(async (blob) => {
-            if (!blob) return reject(new Error("Erreur de compression d'image"));
-            
-            const fileName = `product_${Date.now()}.webp`;
-            const { data, error } = await supabase.storage
-              .from("shop-images")
-              .upload(fileName, blob, {
-                contentType: "image/webp",
-                cacheControl: "3600",
-                upsert: false,
-              });
-
-            if (error) return reject(new Error("Erreur d'upload: " + error.message));
-            
-            const { data: publicData } = supabase.storage
-              .from("shop-images")
-              .getPublicUrl(fileName);
-              
-            resolve(publicData.publicUrl);
-          }, "image/webp", 0.8);
-        };
-      };
-      reader.onerror = (error) => reject(error);
+    const blob = await compressImageToWebp(file, 800, 0.8);
+    const fileName = `product_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.webp`;
+    const { error } = await supabase.storage.from("shop-images").upload(fileName, blob, {
+      contentType: "image/webp",
+      cacheControl: "3600",
+      upsert: false,
     });
+    if (error) throw new Error("Erreur d'upload: " + error.message);
+    const { data: publicData } = supabase.storage.from("shop-images").getPublicUrl(fileName);
+    return publicData.publicUrl;
   }
 };
 
