@@ -218,6 +218,7 @@ export const shopStore = {
         cachedBrands = [...cachedBrands, createdBrand];
         brandsCacheLoaded = true;
       }
+      if (!brand) throw new Error("Marque introuvable après vérification.");
       finalBrandId = brand.id;
       notifyShopUpdate();
     }
@@ -247,6 +248,7 @@ export const shopStore = {
         cachedModels = [...cachedModels, createdModel];
         modelsCacheLoaded = true;
       }
+      if (!modelRecord) throw new Error("Modèle introuvable après vérification.");
       finalModelId = modelRecord.id;
       notifyShopUpdate();
     }

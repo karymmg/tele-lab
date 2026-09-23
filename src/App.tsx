@@ -18,7 +18,7 @@ const ProductDetail = lazy(() => import("@/pages/Catalogue/ProductDetail").then(
 const CategoryDetail = lazy(() => import("@/pages/Catalogue/CategoryDetail").then(m => ({ default: m.CategoryDetail })));
 const BrandDetail = lazy(() => import("@/pages/Catalogue/BrandDetail").then(m => ({ default: m.BrandDetail })));
 const ModelDetail = lazy(() => import("@/pages/Catalogue/ModelDetail").then(m => ({ default: m.ModelDetail })));
-const Search = lazy(() => import("@/pages/Search/Search"));
+const Search = lazy(() => import("@/pages/Search/Search").then((module) => ({ default: module.Search })));
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useHashScroll } from "@/hooks/useHashScroll";
 import { occasionStore } from "@/services/occasionStore";
