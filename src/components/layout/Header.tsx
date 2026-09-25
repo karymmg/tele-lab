@@ -92,6 +92,7 @@ export function Header() {
   };
 
   return (
+    <>
     <header className={`tl-header ${scrolled ? "is-scrolled" : ""}`}>
       <div className="container tl-header__inner">
 
@@ -341,5 +342,7 @@ export function Header() {
         </div>
       </div>
     </header>
+    <div className="tl-header-spacer" aria-hidden="true" />
+    </>
   );
 }

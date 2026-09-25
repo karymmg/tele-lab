@@ -12,6 +12,8 @@ let cachedModels: ShopModel[] = [];
 let brandsCacheLoaded = false;
 let modelsCacheLoaded = false;
 let shopInitialLoadReady = false;
+let shopInitialLoadError: string | null = null;
+let shopRefreshInFlight: Promise<void> | null = null;
 const SHOP_EVENT_NAME = "tele_lab_shop_update";
 
 export interface ShopMediaAsset {
@@ -91,49 +93,45 @@ function mapProduct(dbProd: any): ShopProduct {
 
 // Fetch Initial Data
 async function fetchCategories() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("shop_categories")
     .select("*")
     .order("name", { ascending: true });
-  if (data) {
-    cachedCategories = data.map(mapCategory);
-    notifyShopUpdate();
-  }
+  if (error) throw error;
+  cachedCategories = (data ?? []).map(mapCategory);
+  notifyShopUpdate();
 }
 
 async function fetchProducts() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("shop_products")
     .select("*")
     .order("created_at", { ascending: false });
-  if (data) {
-    cachedProducts = data.map(mapProduct);
-    notifyShopUpdate();
-  }
+  if (error) throw error;
+  cachedProducts = (data ?? []).map(mapProduct);
+  notifyShopUpdate();
 }
 
 async function fetchBrands() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("brands")
     .select("*")
     .order("name", { ascending: true });
-  if (data) {
-    cachedBrands = data;
-    brandsCacheLoaded = true;
-    notifyShopUpdate();
-  }
+  if (error) throw error;
+  cachedBrands = data ?? [];
+  brandsCacheLoaded = true;
+  notifyShopUpdate();
 }
 
 async function fetchModels() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("models")
     .select("*")
     .order("name", { ascending: true });
-  if (data) {
-    cachedModels = data;
-    modelsCacheLoaded = true;
-    notifyShopUpdate();
-  }
+  if (error) throw error;
+  cachedModels = data ?? [];
+  modelsCacheLoaded = true;
+  notifyShopUpdate();
 }
 
 async function deleteShopProducts(ids: string[]) {
@@ -144,40 +142,76 @@ async function deleteShopProducts(ids: string[]) {
   await fetchProducts();
 }
 
-// Subscriptions
-supabase
-  .channel("public:shop_categories")
-  .on("postgres_changes", { event: "*", schema: "public", table: "shop_categories" }, async () => {
-    await fetchCategories();
-  })
-  .subscribe();
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") return error.message;
+  return "Erreur inconnue pendant le chargement de la boutique.";
+}
 
-supabase
-  .channel("public:shop_products")
-  .on("postgres_changes", { event: "*", schema: "public", table: "shop_products" }, async () => {
-    await fetchProducts();
-  })
-  .subscribe();
+function refreshShopData() {
+  if (shopRefreshInFlight) return shopRefreshInFlight;
 
-supabase
-  .channel("public:brands")
-  .on("postgres_changes", { event: "*", schema: "public", table: "brands" }, async () => {
-    await fetchBrands();
-  })
-  .subscribe();
+  shopRefreshInFlight = Promise.allSettled([fetchCategories(), fetchProducts(), fetchBrands(), fetchModels()])
+    .then(results => {
+      const failed = results.find(result => result.status === "rejected");
+      if (failed?.status === "rejected") throw failed.reason;
+      shopInitialLoadError = null;
+      shopInitialLoadReady = true;
+      notifyShopUpdate();
+    })
+    .catch(error => {
+      shopInitialLoadError = errorMessage(error);
+      notifyShopUpdate();
+      throw error;
+    })
+    .finally(() => {
+      shopRefreshInFlight = null;
+    });
 
-supabase
-  .channel("public:models")
-  .on("postgres_changes", { event: "*", schema: "public", table: "models" }, async () => {
-    await fetchModels();
-  })
-  .subscribe();
+  return shopRefreshInFlight;
+}
 
-// Initial load
-void Promise.allSettled([fetchCategories(), fetchProducts(), fetchBrands(), fetchModels()]).then(() => {
-  shopInitialLoadReady = true;
-  notifyShopUpdate();
-});
+function refreshAfterResume() {
+  if (document.visibilityState === "hidden" || !navigator.onLine) return;
+  void refreshShopData().catch(error => console.warn("[Tele Lab] Shop refresh failed:", error));
+}
+
+// One channel keeps all catalog tables in sync. Refetching on SUBSCRIBED also
+// fills the cache after a PWA has slept or its realtime connection has rejoined.
+supabase
+  .channel("public:shop-catalog")
+  .on("postgres_changes", { event: "*", schema: "public", table: "shop_categories" }, () => {
+    void refreshShopData().catch(error => console.warn("[Tele Lab] Shop update failed:", error));
+  })
+  .on("postgres_changes", { event: "*", schema: "public", table: "shop_products" }, () => {
+    void refreshShopData().catch(error => console.warn("[Tele Lab] Shop update failed:", error));
+  })
+  .on("postgres_changes", { event: "*", schema: "public", table: "brands" }, () => {
+    void refreshShopData().catch(error => console.warn("[Tele Lab] Shop update failed:", error));
+  })
+  .on("postgres_changes", { event: "*", schema: "public", table: "models" }, () => {
+    void refreshShopData().catch(error => console.warn("[Tele Lab] Shop update failed:", error));
+  })
+  .subscribe(status => {
+    if (status === "SUBSCRIBED") refreshAfterResume();
+    else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+      console.warn("[Tele Lab] Shop realtime connection:", status);
+    }
+  });
+
+if (typeof window !== "undefined") {
+  let lastResumeRefreshAt = 0;
+  const refreshWhenVisible = () => {
+    const now = Date.now();
+    if (now - lastResumeRefreshAt < 4000) return;
+    lastResumeRefreshAt = now;
+    refreshAfterResume();
+  };
+  window.addEventListener("focus", refreshWhenVisible);
+  window.addEventListener("pageshow", refreshWhenVisible);
+  window.addEventListener("online", refreshWhenVisible);
+  document.addEventListener("visibilitychange", refreshWhenVisible);
+}
 
 // ------------------------------------------------------------------
 // STORE EXPORT
@@ -204,7 +238,7 @@ export const shopStore = {
   },
 
   async refreshData() {
-    await Promise.all([fetchCategories(), fetchProducts(), fetchBrands(), fetchModels()]);
+    await refreshShopData();
   },
 
   // Auto-generate SKU
@@ -448,6 +482,27 @@ export const shopStore = {
   }
 };
 
+async function loadInitialShopData() {
+  const retryDelays = [0, 500, 1500];
+  for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
+    if (retryDelays[attempt]) {
+      await new Promise(resolve => window.setTimeout(resolve, retryDelays[attempt]));
+    }
+    try {
+      await refreshShopData();
+      return;
+    } catch (error) {
+      console.warn(`[Tele Lab] Initial shop load ${attempt + 1}/${retryDelays.length} failed:`, error);
+    }
+  }
+
+  shopInitialLoadReady = true;
+  notifyShopUpdate();
+}
+
+// Wait for Supabase to restore the stored session before the first catalog read.
+void supabase.auth.getSession().catch(() => null).then(() => loadInitialShopData());
+
 // ------------------------------------------------------------------
 // HOOKS
 // ------------------------------------------------------------------
@@ -496,6 +551,21 @@ export function useShopDataReady() {
   }, []);
 
   return ready;
+}
+
+export function useShopDataError() {
+  const [error, setError] = useState<string | null>(() => shopInitialLoadError);
+
+  useEffect(() => {
+    function handleUpdate() {
+      setError(shopInitialLoadError);
+    }
+    window.addEventListener(SHOP_EVENT_NAME, handleUpdate);
+    handleUpdate();
+    return () => window.removeEventListener(SHOP_EVENT_NAME, handleUpdate);
+  }, []);
+
+  return error;
 }
 
 export function useShopBrands() {

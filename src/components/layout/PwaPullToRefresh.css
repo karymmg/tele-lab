@@ -1,0 +1,44 @@
+.tl-pwa-pull-refresh {
+  position: fixed;
+  z-index: 99;
+  top: calc(env(safe-area-inset-top, 0px) + 53px);
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  will-change: transform, opacity;
+}
+
+.tl-pwa-pull-refresh > svg {
+  flex: 0 0 auto;
+}
+
+.tl-pwa-pull-refresh > svg.is-ready {
+  color: var(--color-primary);
+  transform: rotate(180deg);
+}
+
+.tl-pwa-pull-refresh .is-spinning {
+  animation: tl-pwa-refresh-spin 850ms linear infinite;
+}
+
+@keyframes tl-pwa-refresh-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tl-pwa-pull-refresh { transition: none; }
+  .tl-pwa-pull-refresh .is-spinning { animation-duration: 1.8s; }
+}

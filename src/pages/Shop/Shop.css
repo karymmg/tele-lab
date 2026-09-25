@@ -341,6 +341,37 @@
   color: var(--color-text-muted);
 }
 
+.tl-shop-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(239, 68, 68, .3);
+  border-radius: 12px;
+  background: rgba(239, 68, 68, .08);
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.tl-shop-error button,
+.tl-shop-retry {
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-primary);
+  border-radius: 9px;
+  background: var(--color-primary);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tl-shop-error button:disabled,
+.tl-shop-retry:disabled { opacity: .6; cursor: wait; }
+.tl-shop-retry { margin-top: 12px; }
+
 /* Occasion Card Enhancements */
 .tl-occasion-card {
   cursor: pointer;
@@ -500,17 +531,46 @@
 }
 
 @media (max-width: 640px) {
-  .tl-shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .tl-shop-grid .tl-product-info { padding: 12px; }
-  .tl-shop-grid .tl-product-info h3 { font-size: 14px; margin-bottom: 9px; }
-  .tl-shop-grid .tl-product-meta { gap: 6px; margin-bottom: 10px; }
-  .tl-shop-grid .tl-product-meta-item { padding: 7px; }
-  .tl-shop-grid .tl-product-meta-value { font-size: 11px; }
-  .tl-shop-grid .tl-product-desc { font-size: 12px; margin-bottom: 14px; }
-  .tl-shop-grid .tl-product-price { font-size: 18px; }
+  .tl-shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .tl-shop-grid.is-new-products { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .tl-shop-grid.is-new-products .tl-product-card { border-radius: 10px; }
+  .tl-shop-grid.is-new-products .tl-product-info { padding: 8px 7px; }
+  .tl-shop-grid.is-new-products .tl-product-info h3 {
+    display: -webkit-box;
+    min-height: 2.5em;
+    margin-bottom: 6px;
+    overflow: hidden;
+    font-size: 11px;
+    line-height: 1.25;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+  .tl-shop-grid.is-new-products .tl-product-meta { grid-template-columns: minmax(0, 1fr); gap: 2px; margin-bottom: 7px; }
+  .tl-shop-grid.is-new-products .tl-product-meta-item { display: block; overflow: hidden; padding: 0; border: 0; background: transparent; }
+  .tl-shop-grid.is-new-products .tl-product-meta-label { display: none; }
+  .tl-shop-grid.is-new-products .tl-product-meta-value {
+    display: block;
+    overflow: hidden;
+    font-size: 9px;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tl-shop-grid.is-new-products .tl-product-desc { display: none; }
+  .tl-shop-grid.is-new-products .tl-product-footer { align-items: center; gap: 4px; }
+  .tl-shop-grid.is-new-products .tl-product-price { font-size: 13px; white-space: nowrap; }
+  .tl-shop-grid.is-new-products .tl-product-price span { margin-left: 2px; font-size: 9px; }
+  .tl-shop-grid.is-new-products .tl-btn-primary { width: 28px; height: 28px; min-width: 28px !important; padding: 4px !important; }
+  .tl-shop-grid.is-new-products .tl-product-badge { top: 5px; right: 5px; padding: 3px 5px; font-size: 9px; }
+  .tl-shop-grid.is-occasions .tl-product-info { padding: 10px; }
+  .tl-shop-grid.is-occasions .tl-product-info h3 { font-size: 13px; margin-bottom: 7px; }
+  .tl-shop-grid.is-occasions .tl-product-desc { font-size: 11px; margin-bottom: 10px; }
+  .tl-shop-grid.is-occasions .tl-product-price { font-size: 16px; }
   .tl-shop-pagination { gap: 8px; margin-top: 22px; }
   .tl-shop-pagination button { min-height: 40px; padding: 8px 10px; }
   .tl-shop-pagination__status { min-width: 78px; font-size: 12px; }
+  .tl-shop-error { align-items: flex-start; font-size: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

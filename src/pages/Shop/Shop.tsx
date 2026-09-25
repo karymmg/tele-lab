@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useShopCategories, useShopProducts, useShopBrands, useShopModels, useShopDataReady } from "@/services/shopStore";
+import { shopStore, useShopCategories, useShopProducts, useShopBrands, useShopModels, useShopDataReady, useShopDataError } from "@/services/shopStore";
 import { useOccasions, occasionStore } from "@/services/occasionStore";
 import { useAuth } from "@/services/auth";
 import { useCartStore } from "@/services/cartStore";
@@ -19,6 +19,7 @@ export function Shop() {
   const brands = useShopBrands();
   const models = useShopModels();
   const shopDataReady = useShopDataReady();
+  const shopDataError = useShopDataError();
   const occasions = useOccasions();
   const { isLoggedIn } = useAuth();
   const { addItem, openCart } = useCartStore();
@@ -28,13 +29,30 @@ export function Shop() {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [isShopRefreshing, setIsShopRefreshing] = useState(false);
+  const refreshInProgressRef = useRef(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const cartOpenTimer = useRef<number | null>(null);
   const cartFlightSequence = useRef(0);
 
+  const refreshShop = useCallback(async () => {
+    if (refreshInProgressRef.current) return;
+    refreshInProgressRef.current = true;
+    setIsShopRefreshing(true);
+    try {
+      await shopStore.refreshData();
+      setCurrentPage(1);
+    } catch {
+      // The shop store exposes the current error so the page can offer a retry.
+    } finally {
+      refreshInProgressRef.current = false;
+      setIsShopRefreshing(false);
+    }
+  }, []);
+
   useEffect(() => {
     const mobileQuery = window.matchMedia("(max-width: 640px)");
-    const updatePageSize = () => setItemsPerPage(mobileQuery.matches ? 16 : 25);
+    const updatePageSize = () => setItemsPerPage(mobileQuery.matches ? 15 : 25);
     updatePageSize();
     mobileQuery.addEventListener("change", updatePageSize);
     return () => mobileQuery.removeEventListener("change", updatePageSize);
@@ -83,7 +101,6 @@ export function Shop() {
   const pageCount = Math.max(1, Math.ceil(currentItems.length / itemsPerPage));
   const visibleProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const visibleOccasions = filteredOccasions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
   useEffect(() => {
     setCurrentPage(1);
   }, [shopMode, activeCategory, search, itemsPerPage]);
@@ -267,13 +284,22 @@ export function Shop() {
           </div>
         )}
 
+        {shopMode === "neuf" && shopDataReady && shopDataError && filteredProducts.length > 0 && (
+          <div className="tl-shop-error" role="alert">
+            <span>{isArabic ? "تعذّر تحديث بعض بيانات المتجر." : "La boutique n’a pas pu actualiser toutes ses données."}</span>
+            <button type="button" onClick={() => void refreshShop()} disabled={isShopRefreshing}>
+              {isShopRefreshing ? (isArabic ? "جاري التحديث…" : "Actualisation…") : (isArabic ? "إعادة المحاولة" : "Réessayer")}
+            </button>
+          </div>
+        )}
+
         {/* Products Grid */}
         {shopMode === "neuf" && !shopDataReady ? (
           <div className="tl-shop-loading" role="status" aria-live="polite">
             <span className="tl-shop-loading__spinner" />
             <span>{isArabic ? "جاري تحميل المنتجات…" : "Chargement des produits…"}</span>
           </div>
-        ) : <div ref={gridRef} className="tl-shop-grid fade-in-up" style={{ animationDelay: "0.2s" }}>
+        ) : <div ref={gridRef} className={`tl-shop-grid ${shopMode === "neuf" ? "is-new-products" : "is-occasions"} fade-in-up`} style={{ animationDelay: "0.2s" }}>
           {shopMode === "neuf" ? (
             visibleProducts.map(prod => {
               const model = models.find(item => item.id === prod.modelId);
@@ -413,8 +439,17 @@ export function Shop() {
         {((shopMode === "neuf" && shopDataReady && filteredProducts.length === 0) || (shopMode === "occasion" && filteredOccasions.length === 0)) && (
           <div className="tl-shop-empty fade-in-up">
             <Package size={64} color="var(--color-border)" />
-            <h3>{isArabic ? "لا توجد منتجات" : "Aucun produit trouvé"}</h3>
-            <p>{isArabic ? "جرب البحث بكلمات أخرى" : "Essayez une autre recherche ou catégorie"}</p>
+            <h3>{shopMode === "neuf" && shopDataError
+              ? (isArabic ? "تعذّر تحميل المنتجات" : "Impossible de charger les produits")
+              : (isArabic ? "لا توجد منتجات" : "Aucun produit trouvé")}</h3>
+            <p>{shopMode === "neuf" && shopDataError
+              ? shopDataError
+              : (isArabic ? "جرب البحث بكلمات أخرى" : "Essayez une autre recherche ou catégorie")}</p>
+            {shopMode === "neuf" && shopDataError && (
+              <button type="button" className="tl-shop-retry" onClick={() => void refreshShop()} disabled={isShopRefreshing}>
+                {isShopRefreshing ? (isArabic ? "جاري التحديث…" : "Actualisation…") : (isArabic ? "إعادة المحاولة" : "Réessayer")}
+              </button>
+            )}
           </div>
         )}
 
