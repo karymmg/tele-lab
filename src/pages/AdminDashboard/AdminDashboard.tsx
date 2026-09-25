@@ -6,7 +6,7 @@ import { RepairRequest } from "@/types/telelab";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { RepairStatusKey, REPAIR_STATUSES } from "@/utils/status";
 import { useAuth } from "@/services/auth";
-import { Settings, Search, X, Clock, User, Phone, DollarSign, Truck, FileText, Users, Wrench, MessageCircle, Plus, Trash2, Printer, Store, Package, ShoppingBag, BarChart3, Shield, Eye, Pencil, Save, Image, Upload, Copy, Check } from "lucide-react";
+import { Settings, Search, X, Clock, User, Phone, DollarSign, Truck, FileText, FileDown, Users, Wrench, MessageCircle, Plus, Trash2, Printer, Store, Package, ShoppingBag, BarChart3, Shield, Eye, Pencil, Save, Image, Upload, Copy, Check } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { RepairRequestForm } from "@/components/forms/RepairRequestForm";
 import { useShopCategories, useShopProducts, useShopBrands, useShopModels, shopStore } from "@/services/shopStore";
@@ -588,6 +588,7 @@ export function AdminDashboard() {
       const errors: string[] = [];
       let added = 0;
       let autoLinkedImages = 0;
+      let imagesUploaded = 0;
       setCsvImportStatus({ phase: "importing", total: dataRows.length, processed: 0, added: 0, errors: [] });
       const readValue = (row: string[], index: number) => index >= 0 ? (row[index] || "").trim() : "";
       const parseAmount = (value: string) => Number(value.replace(/\s/g, "").replace(",", "."));
@@ -612,7 +613,7 @@ export function AdminDashboard() {
         const description = readValue(row, columns.description);
         const csvImageUrl = readValue(row, columns.imageUrl);
         const matchedImageUrl = !csvImageUrl ? mediaByProductName.get(normalizeCsvValue(productName)) : undefined;
-        const imageUrl = csvImageUrl || matchedImageUrl || "";
+        let imageUrl = matchedImageUrl || "";
         const price = parseAmount(priceText);
         const costPrice = costText ? parseAmount(costText) : 0;
         const stock = stockText ? Number(stockText.replace(",", ".")) : 0;
@@ -624,6 +625,17 @@ export function AdminDashboard() {
         else if (!Number.isFinite(price) || price <= 0) rowError = "prix de vente invalide";
         else if (!Number.isFinite(costPrice) || costPrice < 0) rowError = "prix d'achat invalide";
         else if (!Number.isInteger(stock) || stock < 0) rowError = "stock invalide";
+
+        if (!rowError && csvImageUrl) {
+          try {
+            const { asset, uploaded } = await shopStore.uploadProductMediaFromUrl(productName, csvImageUrl);
+            imageUrl = asset.publicUrl;
+            if (uploaded) imagesUploaded += 1;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "erreur de téléchargement de l'image";
+            rowError = "image : " + message;
+          }
+        }
 
         if (rowError) {
           errors.push("Ligne " + (rowIndex + 2) + " : " + rowError);
@@ -660,7 +672,7 @@ export function AdminDashboard() {
         processed: dataRows.length,
         added,
         errors: errors.slice(0, 5),
-        message: (isArabic ? "تم استيراد " : "Import terminé : ") + added + (isArabic ? " منتج." : " produit(s) ajouté(s).") + (autoLinkedImages ? (isArabic ? ` صور مربوطة آلياً: ${autoLinkedImages}.` : ` Images liées automatiquement : ${autoLinkedImages}.`) : "") + (mediaLibraryUnavailable ? (isArabic ? " تعذّر قراءة مكتبة الصور." : " Bibliothèque média indisponible : les noms n'ont pas pu être associés.") : "") + (errors.length ? " " + errors.length + (isArabic ? " أسطر فيها أخطاء." : " ligne(s) à corriger.") : ""),
+        message: (isArabic ? "تم استيراد " : "Import terminé : ") + added + (isArabic ? " منتج." : " produit(s) ajouté(s).") + (imagesUploaded ? (isArabic ? ` صور نزلت في مكتبة الميديا: ${imagesUploaded}.` : ` Images copiées dans la médiathèque : ${imagesUploaded}.`) : "") + (autoLinkedImages ? (isArabic ? ` صور مربوطة آلياً: ${autoLinkedImages}.` : ` Images liées automatiquement : ${autoLinkedImages}.`) : "") + (mediaLibraryUnavailable ? (isArabic ? " تعذّر قراءة مكتبة الصور." : " Bibliothèque média indisponible : les noms n'ont pas pu être associés.") : "") + (errors.length ? " " + errors.length + (isArabic ? " أسطر فيها أخطاء." : " ligne(s) à corriger.") : ""),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erreur pendant la lecture du CSV";
@@ -687,6 +699,37 @@ export function AdminDashboard() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleDownloadStockCsv = () => {
+    const headers = ["Nom", "SKU", "Prix_Vente", "Prix_Achat", "Stock", "ID_Categorie", "ID_Marque", "ID_Modele", "Description", "URL_Image"];
+    const rows = products.map(product => {
+      return [
+        product.name,
+        product.sku || "",
+        product.price.toFixed(2),
+        (product.costPrice || 0).toFixed(2),
+        product.stock,
+        product.categoryId,
+        product.brandId || "",
+        product.modelId || "",
+        product.description || "",
+        product.imageUrl || "",
+      ];
+    });
+    const escapeCell = (value: string | number) => {
+      const text = String(value);
+      return /[;"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+    const csv = "\uFEFF" + [headers, ...rows].map(row => row.map(escapeCell).join(";")).join("\r\n") + "\r\n";
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "telelab_produits_stock.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   function handleOpenProductEditor(product: ShopProduct) {
@@ -1838,6 +1881,15 @@ export function AdminDashboard() {
                     <h3 style={{ margin: 0, fontSize: 16, flex: 1, minWidth: 200 }}>Gestion des Produits</h3>
                     <div className="tl-product-list-search"><Search size={17} aria-hidden="true" /><input type="search" aria-label={isArabic ? "بحث في المنتجات" : "Rechercher dans les produits"} placeholder={isArabic ? "اسم، ماركة، موديل، SKU…" : "Nom, marque, modèle, SKU…"} value={search} onChange={event => setSearch(event.target.value)} /><span>{filteredProducts.length}</span></div>
                     <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={handleDownloadStockCsv}
+                        disabled={!products.length}
+                        className="tl-btn-manage"
+                        style={{ height: 36, background: "rgba(var(--color-success-rgb),0.1)", color: "var(--color-success)", borderColor: "rgba(var(--color-success-rgb),0.3)" }}
+                      >
+                        <FileDown size={14} /> {isArabic ? "تصدير المخزون CSV" : "Exporter le stock CSV"}
+                      </button>
                       <button 
                         type="button" 
                         onClick={handleDownloadCsvTemplate}
@@ -1876,7 +1928,7 @@ export function AdminDashboard() {
                     </button>
                   </div>
                 </div>
-                <p className="tl-csv-image-help">{isArabic ? "URL_Image اختياري: إذا كان فارغاً، يتربط تلقائياً بصورة اسمها نفس اسم المنتج." : "URL_Image est facultative : si elle est vide, le CSV associe automatiquement la photo dont le nom correspond au produit."}</p>
+                <p className="tl-csv-image-help">{isArabic ? "إذا فيه CSV رابط صورة خارجي، تتنسخ الصورة تلقائياً لمكتبة Supabase ويتبدل الرابط؛ إذا URL_Image فارغ، تتربط صورة بنفس اسم المنتج من الميديا." : "Un URL_Image externe est copié dans Supabase Storage et le produit reçoit la nouvelle URL. Si le champ est vide, l'image est cherchée par nom de produit dans la médiathèque."}</p>
 
                 {csvImportStatus.phase !== "idle" && (
                   <div className={"tl-csv-import-status is-" + csvImportStatus.phase} role="status" aria-live="polite">
@@ -2115,7 +2167,7 @@ export function AdminDashboard() {
 
             {shopView === "stock" && (
               <>
-                <div className="tl-admin-toolbar" style={{ alignItems: "flex-end", marginTop: 24 }}>
+                <div className="tl-admin-toolbar" style={{ alignItems: "center", justifyContent: "space-between", marginTop: 24 }}>
                   <h3 style={{ margin: 0, fontSize: 16 }}>Suivi des Stocks</h3>
                 </div>
                 <div className="tl-admin-table-card">

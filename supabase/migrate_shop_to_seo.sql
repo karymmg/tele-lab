@@ -8,15 +8,6 @@ ALTER TABLE public.shop_categories ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE public.shop_categories ADD COLUMN IF NOT EXISTS seo_title TEXT;
 ALTER TABLE public.shop_categories ADD COLUMN IF NOT EXISTS seo_description TEXT;
 
--- 1.5 ALTER brands and models to add SEO fields
-ALTER TABLE public.brands ADD COLUMN IF NOT EXISTS slug TEXT UNIQUE;
-ALTER TABLE public.brands ADD COLUMN IF NOT EXISTS seo_title TEXT;
-ALTER TABLE public.brands ADD COLUMN IF NOT EXISTS seo_description TEXT;
-
-ALTER TABLE public.models ADD COLUMN IF NOT EXISTS slug TEXT UNIQUE;
-ALTER TABLE public.models ADD COLUMN IF NOT EXISTS seo_title TEXT;
-ALTER TABLE public.models ADD COLUMN IF NOT EXISTS seo_description TEXT;
-
 -- 2. ALTER shop_products to add SEO & Catalog fields
 ALTER TABLE public.shop_products ADD COLUMN IF NOT EXISTS slug TEXT UNIQUE;
 ALTER TABLE public.shop_products ADD COLUMN IF NOT EXISTS sku TEXT UNIQUE;
@@ -100,8 +91,6 @@ EXECUTE FUNCTION set_shop_category_slug();
 -- Fix existing data slugs (if any are NULL)
 UPDATE public.shop_categories SET slug = generate_slug(name) WHERE slug IS NULL;
 UPDATE public.shop_products SET slug = generate_slug(name) WHERE slug IS NULL;
-UPDATE public.brands SET slug = generate_slug(name) WHERE slug IS NULL;
-UPDATE public.models SET slug = generate_slug(name) WHERE slug IS NULL;
 
 -- 4. WHOLESALERS (Grossistes)
 CREATE TABLE IF NOT EXISTS public.wholesalers (

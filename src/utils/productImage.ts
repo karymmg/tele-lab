@@ -17,8 +17,11 @@ export function getProductImageCandidates(value?: string | null): string[] {
   if (!id) return [source];
 
   const resourceKey = url.searchParams.get("resourcekey");
+  const directUrl = new URL(`https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w1600`);
+  if (resourceKey) directUrl.searchParams.set("resourcekey", resourceKey);
   const resourceKeyQuery = resourceKey ? "&resourcekey=" + encodeURIComponent(resourceKey) : "";
   return [
+    directUrl.toString(),
     `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w1600${resourceKeyQuery}`,
     `https://drive.google.com/uc?export=view&id=${encodeURIComponent(id)}${resourceKeyQuery}`,
   ];

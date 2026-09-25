@@ -17,6 +17,7 @@ interface CartState {
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   toggleCart: () => void;
+  openCart: () => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
 }
@@ -49,6 +50,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   })),
   clearCart: () => set({ items: [] }),
   toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
+  openCart: () => set({ isOpen: true }),
   getTotalItems: () => {
     const state = get();
     return state.items.reduce((total, item) => total + item.quantity, 0);

@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useShopCategories, useShopProducts, useShopBrands, useShopModels, shopStore } from "@/services/shopStore";
+import { useShopCategories, useShopProducts, useShopBrands, useShopModels, useShopDataReady } from "@/services/shopStore";
 import { useOccasions, occasionStore } from "@/services/occasionStore";
 import { useAuth } from "@/services/auth";
 import { useCartStore } from "@/services/cartStore";
-import { Search, Store, ShoppingBag, Package, Plus, UserCheck, MessageCircle, ShoppingCart, CheckCircle2 } from "lucide-react";
+import { Search, Store, ShoppingBag, Package, Plus, UserCheck, MessageCircle, ShoppingCart, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import "./Shop.css";
 import { getProductPath } from "@/utils/productUrl";
@@ -18,13 +18,31 @@ export function Shop() {
   const products = useShopProducts();
   const brands = useShopBrands();
   const models = useShopModels();
+  const shopDataReady = useShopDataReady();
   const occasions = useOccasions();
   const { isLoggedIn } = useAuth();
-  const { addItem, toggleCart } = useCartStore();
+  const { addItem, openCart } = useCartStore();
 
   const [shopMode, setShopMode] = useState<"neuf" | "occasion">("neuf");
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const cartOpenTimer = useRef<number | null>(null);
+  const cartFlightSequence = useRef(0);
+
+  useEffect(() => {
+    const mobileQuery = window.matchMedia("(max-width: 640px)");
+    const updatePageSize = () => setItemsPerPage(mobileQuery.matches ? 16 : 25);
+    updatePageSize();
+    mobileQuery.addEventListener("change", updatePageSize);
+    return () => mobileQuery.removeEventListener("change", updatePageSize);
+  }, []);
+
+  useEffect(() => () => {
+    if (cartOpenTimer.current !== null) window.clearTimeout(cartOpenTimer.current);
+  }, []);
 
   const handleProductClick = (id: string, isOccasion: boolean) => {
     occasionStore.incrementViews(id, isOccasion);
@@ -44,7 +62,7 @@ export function Shop() {
     const productModel = models.find(model => model.id === p.modelId);
     const productBrand = brands.find(brand => brand.id === p.brandId) ||
                          brands.find(brand => brand.id === productModel?.brand_id);
-    const searchableText = [p.name, p.description, productBrand?.name, productModel?.name]
+    const searchableText = [p.name, p.sku, p.description, productBrand?.name, productModel?.name]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -60,6 +78,91 @@ export function Shop() {
                           o.description.toLowerCase().includes(search.toLowerCase());
     return matchesCat && matchesSearch && o.status === "active";
   });
+
+  const currentItems = shopMode === "neuf" ? filteredProducts : filteredOccasions;
+  const pageCount = Math.max(1, Math.ceil(currentItems.length / itemsPerPage));
+  const visibleProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const visibleOccasions = filteredOccasions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [shopMode, activeCategory, search, itemsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage(page => Math.min(page, pageCount));
+  }, [pageCount]);
+
+  function goToPage(page: number) {
+    setCurrentPage(Math.max(1, Math.min(page, pageCount)));
+    window.requestAnimationFrame(() => gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+
+  function animateProductIntoCart(imageUrl?: string, sourceCard?: HTMLElement | null) {
+    const flightId = ++cartFlightSequence.current;
+    const target = document.querySelector<HTMLElement>(".tl-header-cart-button");
+    const source = sourceCard?.querySelector<HTMLElement>(".tl-product-img-wrapper");
+    if (!target || !source || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      openCart();
+      return;
+    }
+
+    const start = source.getBoundingClientRect();
+    const end = target.getBoundingClientRect();
+    const flyer = document.createElement("div");
+    flyer.className = "tl-cart-flight";
+    flyer.style.left = `${start.left + start.width * 0.22}px`;
+    flyer.style.top = `${start.top + start.height * 0.22}px`;
+    flyer.style.width = `${Math.min(start.width * 0.56, 112)}px`;
+    flyer.style.height = `${Math.min(start.height * 0.56, 112)}px`;
+    if (imageUrl) {
+      const image = document.createElement("img");
+      image.src = imageUrl;
+      image.alt = "";
+      flyer.appendChild(image);
+    } else {
+      flyer.innerHTML = '<span aria-hidden="true">✦</span>';
+    }
+    document.body.appendChild(flyer);
+    void flyer.offsetWidth;
+    requestAnimationFrame(() => {
+      flyer.style.transform = `translate(${end.left + end.width / 2 - (start.left + start.width * 0.5)}px, ${end.top + end.height / 2 - (start.top + start.height * 0.5)}px) scale(.16)`;
+      flyer.style.opacity = "0.25";
+    });
+
+    let finished = false;
+    const finishFlight = () => {
+      if (finished) return;
+      finished = true;
+      flyer.remove();
+      if (flightId !== cartFlightSequence.current) return;
+      if (cartOpenTimer.current !== null) window.clearTimeout(cartOpenTimer.current);
+      cartOpenTimer.current = null;
+      target.classList.remove("is-cart-bumping");
+      void target.offsetWidth;
+      target.classList.add("is-cart-bumping");
+      window.setTimeout(() => target.classList.remove("is-cart-bumping"), 520);
+      openCart();
+    };
+    flyer.addEventListener("transitionend", finishFlight, { once: true });
+    if (cartOpenTimer.current !== null) window.clearTimeout(cartOpenTimer.current);
+    cartOpenTimer.current = window.setTimeout(finishFlight, 680);
+  }
+
+  function handleAddToCart(event: React.MouseEvent<HTMLButtonElement>, product: typeof products[number]) {
+    event.stopPropagation();
+    const card = event.currentTarget.closest<HTMLElement>(".tl-product-card");
+    card?.classList.add("is-adding");
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      quantity: 1,
+      imageUrl: product.imageUrl,
+      isOccasion: false,
+    });
+    animateProductIntoCart(product.imageUrl, card);
+    window.setTimeout(() => card?.classList.remove("is-adding"), 720);
+  }
 
   return (
     <main className="tl-shop-page">
@@ -165,9 +268,14 @@ export function Shop() {
         )}
 
         {/* Products Grid */}
-        <div className="tl-shop-grid fade-in-up" style={{ animationDelay: "0.2s" }}>
+        {shopMode === "neuf" && !shopDataReady ? (
+          <div className="tl-shop-loading" role="status" aria-live="polite">
+            <span className="tl-shop-loading__spinner" />
+            <span>{isArabic ? "جاري تحميل المنتجات…" : "Chargement des produits…"}</span>
+          </div>
+        ) : <div ref={gridRef} className="tl-shop-grid fade-in-up" style={{ animationDelay: "0.2s" }}>
           {shopMode === "neuf" ? (
-            filteredProducts.map(prod => {
+            visibleProducts.map(prod => {
               const model = models.find(item => item.id === prod.modelId);
               const brand = brands.find(item => item.id === prod.brandId) ||
                             brands.find(item => item.id === model?.brand_id);
@@ -208,18 +316,7 @@ export function Shop() {
                       <button
                         className="tl-btn-primary"
                         style={{ padding: "8px", borderRadius: "8px", minWidth: "40px", display: "flex", justifyContent: "center" }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addItem({
-                            id: prod.id,
-                            name: prod.name,
-                            price: prod.price,
-                            quantity: 1,
-                            imageUrl: prod.imageUrl,
-                            isOccasion: false
-                          });
-                          toggleCart();
-                        }}
+                        onClick={(event) => handleAddToCart(event, prod)}
                         title="Ajouter au panier"
                       >
                         <ShoppingCart size={18} />
@@ -230,7 +327,7 @@ export function Shop() {
               );
             })
           ) : (
-            filteredOccasions.map(occ => {
+            visibleOccasions.map(occ => {
               const cleanPhone = occ.whatsappNumber.replace(/[^0-9]/g, "");
               const formattedPhone = cleanPhone.startsWith("216") ? cleanPhone : (cleanPhone.length === 8 ? `216${cleanPhone}` : cleanPhone);
               const waText = encodeURIComponent(`Bonjour ! Je suis intéressé(e) par votre annonce "${occ.brand} ${occ.model}" à ${occ.price} DT sur TeleLab.`);
@@ -295,9 +392,25 @@ export function Shop() {
               );
             })
           )}
-        </div>
+        </div>}
 
-        {((shopMode === "neuf" && filteredProducts.length === 0) || (shopMode === "occasion" && filteredOccasions.length === 0)) && (
+        {currentItems.length > itemsPerPage && (shopMode === "occasion" || shopDataReady) && (
+          <nav className="tl-shop-pagination" aria-label={isArabic ? "صفحات المنتجات" : "Pagination des produits"}>
+            <button type="button" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1}>
+              {isArabic ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+              <span>{isArabic ? "السابق" : "Précédent"}</span>
+            </button>
+            <span className="tl-shop-pagination__status" aria-live="polite">
+              {isArabic ? `صفحة ${currentPage} من ${pageCount}` : `Page ${currentPage} sur ${pageCount}`}
+            </span>
+            <button type="button" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= pageCount}>
+              <span>{isArabic ? "التالي" : "Suivant"}</span>
+              {isArabic ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+            </button>
+          </nav>
+        )}
+
+        {((shopMode === "neuf" && shopDataReady && filteredProducts.length === 0) || (shopMode === "occasion" && filteredOccasions.length === 0)) && (
           <div className="tl-shop-empty fade-in-up">
             <Package size={64} color="var(--color-border)" />
             <h3>{isArabic ? "لا توجد منتجات" : "Aucun produit trouvé"}</h3>

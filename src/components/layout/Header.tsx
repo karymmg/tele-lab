@@ -230,7 +230,7 @@ export function Header() {
 
           {/* Cart Button */}
           <button
-            className="tl-header__theme-toggle"
+            className="tl-header__theme-toggle tl-header-cart-button"
             onClick={toggleCart}
             style={{ position: "relative" }}
             aria-label="Mon Panier"

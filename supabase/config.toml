@@ -1,0 +1,4 @@
+project_id = "qroihwmpnxyjarbjngon"
+
+[functions.import-product-image]
+verify_jwt = false

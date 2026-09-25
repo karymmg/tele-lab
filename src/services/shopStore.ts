@@ -11,6 +11,7 @@ let cachedBrands: ShopBrand[] = [];
 let cachedModels: ShopModel[] = [];
 let brandsCacheLoaded = false;
 let modelsCacheLoaded = false;
+let shopInitialLoadReady = false;
 const SHOP_EVENT_NAME = "tele_lab_shop_update";
 
 export interface ShopMediaAsset {
@@ -173,10 +174,10 @@ supabase
   .subscribe();
 
 // Initial load
-fetchCategories();
-fetchProducts();
-fetchBrands();
-fetchModels();
+void Promise.allSettled([fetchCategories(), fetchProducts(), fetchBrands(), fetchModels()]).then(() => {
+  shopInitialLoadReady = true;
+  notifyShopUpdate();
+});
 
 // ------------------------------------------------------------------
 // STORE EXPORT
@@ -203,7 +204,7 @@ export const shopStore = {
   },
 
   async refreshData() {
-    await Promise.all([fetchProducts(), fetchBrands(), fetchModels()]);
+    await Promise.all([fetchCategories(), fetchProducts(), fetchBrands(), fetchModels()]);
   },
 
   // Auto-generate SKU
@@ -389,6 +390,49 @@ export const shopStore = {
     return { name: `${baseName}.webp`, path, publicUrl: `${publicData.publicUrl}?v=${version}`, updatedAt: new Date(version).toISOString() };
   },
 
+  async uploadProductMediaFromUrl(productName: string, sourceUrl: string): Promise<{ asset: ShopMediaAsset; uploaded: boolean }> {
+    const normalizedUrl = normalizeProductImageUrl(sourceUrl);
+    if (!normalizedUrl) throw new Error("URL d'image manquante.");
+
+    let remoteUrl: URL;
+    try {
+      remoteUrl = new URL(normalizedUrl);
+    } catch {
+      throw new Error("URL d'image invalide.");
+    }
+    if (remoteUrl.protocol !== "https:" && remoteUrl.protocol !== "http:") {
+      throw new Error("L'URL de l'image doit commencer par http:// ou https://.");
+    }
+
+    if (remoteUrl.pathname.includes("/storage/v1/object/public/shop-images/media/")) {
+      const name = decodeURIComponent(remoteUrl.pathname.split("/").pop() || "image.webp");
+      return {
+        asset: { name, path: `media/${name}`, publicUrl: normalizedUrl, updatedAt: null },
+        uploaded: false,
+      };
+    }
+
+    const { data, error } = await supabase.functions.invoke<{
+      asset?: ShopMediaAsset;
+      uploaded?: boolean;
+      error?: string;
+    }>("import-product-image", {
+      body: { productName, imageUrl: normalizedUrl },
+    });
+
+    if (error) {
+      const context = "context" in error ? error.context : undefined;
+      if (context instanceof Response) {
+        const body = await context.clone().json().catch(() => null);
+        if (typeof body?.error === "string") throw new Error(body.error);
+      }
+      throw new Error("Service de téléchargement Supabase indisponible : " + error.message);
+    }
+    if (data?.error) throw new Error(data.error);
+    if (!data?.asset?.publicUrl) throw new Error("Supabase n'a pas retourné l'URL de la photo.");
+    return { asset: data.asset, uploaded: data.uploaded !== false };
+  },
+
   // Image Upload Action
   async uploadProductImage(file: File): Promise<string> {
     const blob = await compressImageToWebp(file, 800, 0.8);
@@ -437,6 +481,21 @@ export function useShopProducts() {
   }, []);
 
   return products;
+}
+
+export function useShopDataReady() {
+  const [ready, setReady] = useState(() => shopInitialLoadReady);
+
+  useEffect(() => {
+    function handleUpdate() {
+      setReady(shopInitialLoadReady);
+    }
+    window.addEventListener(SHOP_EVENT_NAME, handleUpdate);
+    handleUpdate();
+    return () => window.removeEventListener(SHOP_EVENT_NAME, handleUpdate);
+  }, []);
+
+  return ready;
 }
 
 export function useShopBrands() {
