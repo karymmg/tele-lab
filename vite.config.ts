@@ -3,12 +3,21 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 import { fileURLToPath } from "url";
+import imeiCheckHandler from "./api/imei-check.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [
     react(),
+    {
+      name: "local-imei-check-api",
+      configureServer(server) {
+        server.middlewares.use("/api/imei-check", (req, res) => {
+          void imeiCheckHandler(req, res);
+        });
+      },
+    },
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["icon-512.jpg"],

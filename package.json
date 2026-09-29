@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/generate-seo-pages.js",
+    "build:mobile": "npm run build && npx cap sync",
+    "cap:sync": "npx cap sync",
+    "android:open": "npx cap open android",
+    "ios:open": "npx cap open ios",
     "preview": "vite preview",
     "lint": "eslint ."
   },
@@ -13,6 +17,7 @@
     "@capacitor/android": "^8.5.1",
     "@capacitor/cli": "^8.4.3",
     "@capacitor/core": "^8.5.1",
+    "@capacitor/ios": "^8.5.2",
     "@supabase/supabase-js": "^2.45.0",
     "i18next": "^23.11.5",
     "i18next-browser-languagedetector": "^8.0.0",

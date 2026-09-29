@@ -58,12 +58,14 @@ export function Header() {
   if (isLoggedIn && user?.role === "admin") {
     navLinks = [
       { to: "/shop", label: isArabic ? "المتجر" : "Boutique" },
+      { to: "/imei-check", label: isArabic ? "تثبّت من IMEI" : "Vérifier IMEI" },
       { to: dashboardLink, label: isArabic ? "لوحة الإدارة" : "Administration" },
     ];
   } else if (isLoggedIn) {
     navLinks = [
       { to: "/demande", label: isArabic ? "إصلاح في المنزل" : "Réparation à domicile" },
       { to: "/tracking", label: isArabic ? "تتبع الإصلاح" : "Suivi réparation" },
+      { to: "/imei-check", label: isArabic ? "تثبّت من IMEI" : "Vérifier IMEI" },
       { to: "/dashboard/client#orders", label: isArabic ? "طلباتي" : "Mes commandes" },
       { to: "/shop", label: isArabic ? "المتجر" : "Boutique" },
     ];
@@ -71,8 +73,8 @@ export function Header() {
     navLinks = [
       { to: "/demande", label: isArabic ? "إصلاح في المنزل" : "Réparation à domicile" },
       { to: "/tracking", label: isArabic ? "تتبع الإصلاح" : "Suivi réparation" },
+      { to: "/imei-check", label: isArabic ? "تثبّت من IMEI" : "Vérifier IMEI" },
       { to: "/shop", label: isArabic ? "المتجر" : "Boutique" },
-      { to: "/#how-it-works", label: isArabic ? "كيف يعمل" : "Comment ça marche" },
     ];
   }
 

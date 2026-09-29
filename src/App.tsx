@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Suspense, lazy } from "react";
@@ -19,6 +19,7 @@ const CategoryDetail = lazy(() => import("@/pages/Catalogue/CategoryDetail").the
 const BrandDetail = lazy(() => import("@/pages/Catalogue/BrandDetail").then(m => ({ default: m.BrandDetail })));
 const ModelDetail = lazy(() => import("@/pages/Catalogue/ModelDetail").then(m => ({ default: m.ModelDetail })));
 const Search = lazy(() => import("@/pages/Search/Search").then((module) => ({ default: module.Search })));
+const ImeiCheck = lazy(() => import("@/pages/ImeiCheck/ImeiCheck").then((module) => ({ default: module.ImeiCheck })));
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useHashScroll } from "@/hooks/useHashScroll";
 import { occasionStore } from "@/services/occasionStore";
@@ -28,6 +29,8 @@ import { PwaPullToRefresh } from "@/components/layout/PwaPullToRefresh";
 import { useEffect } from "react";
 
 export default function App() {
+  const location = useLocation();
+  const isImeiCheckPage = location.pathname === "/imei-check";
   useHashScroll();
   const theme = useTheme((state) => state.theme);
 
@@ -42,7 +45,7 @@ export default function App() {
   return (
     <>
       <Header />
-      <PwaPullToRefresh />
+      {!isImeiCheckPage && <PwaPullToRefresh />}
       <Suspense fallback={<div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>}>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -56,6 +59,7 @@ export default function App() {
           <Route path="/search" element={<Search />} />
           <Route path="/demande" element={<RequestRepair />} />
           <Route path="/tracking" element={<Tracking />} />
+          <Route path="/imei-check" element={<ImeiCheck />} />
           <Route path="/shop" element={<Shop />} />
           <Route path="/shop/occasion/:id" element={<OccasionDetail />} />
           <Route 
@@ -88,7 +92,7 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
-      <Footer />
+      {!isImeiCheckPage && <Footer />}
       <CartDrawer />
     </>
   );
